@@ -9,7 +9,7 @@ export default function Dashboard() {
     { title: "Kundli", icon: "📜", path: "/kundli" },
     { title: "Birth Chart", icon: "🌌", path: "/birth-chart" },
     { title: "Compatibility", icon: "❤️", path: "/compatibility" },
-
+    { title: "Muhurat", icon: "📅", path: "/muhurat" }, 
     { title: "Panchang", icon: "🪐", path: "/panchang" },
     { title: "Dasha", icon: "⏳", path: "/dasha" },
     { title: "Transit", icon: "🌠", path: "/transit" },
@@ -19,8 +19,6 @@ export default function Dashboard() {
     { title: "Kundli Scanner", icon: "📷", path: "/kundli-scanner" },
     { title: "Voice Astrology", icon: "🎙", path: "/voice-astrology" },
     { title: "AI Report", icon: "🧾", path: "/ai-report" },
-    { title: "Muhurat", icon: "📅", path: "/muhurat" },
-    { title: "Subscription", icon: "💳", path: "/subscription" },
     { title: "Profile", icon: "👤", path: "/profile" },
     { title: "Settings", icon: "⚙", path: "/settings" },
   ];

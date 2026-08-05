@@ -4,6 +4,7 @@ export default function BirthChart() {
 
   const [form, setForm] = useState({
     name: "",
+    email: "",
     birth_date: "",
     birth_time: "",
     birth_place: "",

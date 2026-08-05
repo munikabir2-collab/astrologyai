@@ -1,103 +1,89 @@
-import os
-
-import razorpay
-from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.user import User
 
-load_dotenv()
+from app.services.payment_service import (
+    REPORT_PRICES,
+    create_payment_order,
+    verify_payment,
+)
 
 router = APIRouter(
     prefix="/payment",
     tags=["Payment"],
 )
 
-client = razorpay.Client(
-    auth=(
-        os.getenv("RAZORPAY_KEY_ID"),
-        os.getenv("RAZORPAY_KEY_SECRET"),
-    )
-)
+
+# -----------------------------------------
+# Request Models
+# -----------------------------------------
+
+class OrderRequest(BaseModel):
+    report_type: str
 
 
 class VerifyRequest(BaseModel):
     email: str
+    report_type: str
+
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
 
 
-@router.post("/create-order")
-def create_order():
+# -----------------------------------------
+# Create Razorpay Order
+# -----------------------------------------
 
-    order = client.order.create(
-        {
-            "amount": 49900,          # ₹499 Test
-            "currency": "INR",
-            "payment_capture": 1,
-        }
-    )
+@router.post("/create-order")
+def create_order(data: OrderRequest):
+
+    order = create_payment_order(data.report_type)
 
     return {
         "success": True,
-        "key": os.getenv("RAZORPAY_KEY_ID"),
-        "order": order,
+        **order,
     }
 
 
+# -----------------------------------------
+# Verify Razorpay Payment
+# -----------------------------------------
+
 @router.post("/verify")
-def verify_payment(
+def verify(
     data: VerifyRequest,
     db: Session = Depends(get_db),
 ):
 
-    try:
+    payment = verify_payment(
+        db=db,
+        email=data.email,
+        report_type=data.report_type,
+        razorpay_order_id=data.razorpay_order_id,
+        razorpay_payment_id=data.razorpay_payment_id,
+        razorpay_signature=data.razorpay_signature,
+    )
 
-        client.utility.verify_payment_signature(
-            {
-                "razorpay_order_id": data.razorpay_order_id,
-                "razorpay_payment_id": data.razorpay_payment_id,
-                "razorpay_signature": data.razorpay_signature,
-            }
-        )
+    return {
+        "success": True,
+        "message": "Payment Successful",
+        "payment_id": payment.payment_id,
+        "report_type": payment.report_type,
+        "status": payment.status,
+    }
 
-        # Find User
-        user = (
-            db.query(User)
-            .filter(User.email == data.email)
-            .first()
-        )
 
-        if not user:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found",
-            )
+# -----------------------------------------
+# Price List
+# -----------------------------------------
 
-        # Activate Subscription
-        user.subscription_plan = "PRO"
-        user.subscription_active = True
+@router.get("/prices")
+def prices():
 
-        db.commit()
-        db.refresh(user)
-
-        return {
-            "success": True,
-            "message": "Subscription Activated",
-            "plan": "PRO",
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        print(e)
-
-        raise HTTPException(
-            status_code=400,
-            detail="Payment Verification Failed",
-        )
+    return {
+        "success": True,
+        "prices": REPORT_PRICES,
+    }

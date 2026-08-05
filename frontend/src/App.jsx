@@ -24,8 +24,8 @@ import Muhurat from "./pages/Muhurat";
 
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
-import Subscription from "./pages/Subscription";
 
+import PremiumReports from "./pages/PremiumReports";
 function App() {
   return (
     <BrowserRouter>
@@ -63,7 +63,7 @@ function App() {
         {/* User */}
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
-        <Route  path="/subscription" element={<Subscription />} />
+        <Route path="/premium" element={<PremiumReports />} />
 
       </Routes>
     </BrowserRouter>

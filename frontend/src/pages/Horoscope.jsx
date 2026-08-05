@@ -1,23 +1,28 @@
 import { useState } from "react";
-
-
+import PaymentButton from "../components/PaymentButton";
 export default function Horoscope() {
 
   const [sign, setSign] = useState("");
   const [result, setResult] = useState(null);
 
+  const [email, setEmail] = useState("");
+
+  const [name, setName] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [birthTime, setBirthTime] = useState("");
+  const [birthPlace, setBirthPlace] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  // PDF states
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfMessage, setPdfMessage] = useState("");
   const [pdfError, setPdfError] = useState("");
 
 
-
   async function getHoroscope() {
 
     if (!sign) return;
+
 
     setLoading(true);
 
@@ -33,107 +38,134 @@ export default function Horoscope() {
       setResult(data);
 
 
-    } catch (err) {
+    } catch(err){
 
       setResult({
-        error:"Unable to connect to AstroAI API",
+        error:"Unable to connect AstroAI API"
       });
 
+
+    } finally {
+
+      setLoading(false);
+
     }
-
-
-    setLoading(false);
 
   }
 
 
 
-
-  // PDF Download Function
-// PDF Download Function
-
-async function downloadPDF(){
-
-  try{
-
-    setPdfLoading(true);
-
-    setPdfMessage("");
-    setPdfError("");
+  async function downloadPDF(){
 
 
-    const response = await fetch(
-      `http://127.0.0.1:8000/astrology/download-pdf?sign=${sign}`
-    );
+    if(!email){
+
+      setPdfError("❌ Please enter your email");
+
+      return;
+
+    }
 
 
-    if(!response.ok){
+    try{
 
-      throw new Error(
-        "PDF generation failed"
+
+      setPdfLoading(true);
+
+      setPdfMessage("");
+
+      setPdfError("");
+
+
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/astrology/download-pdf",
+        {
+          method:"POST",
+
+          headers:{
+            "Content-Type":"application/json",
+          },
+
+
+          body:JSON.stringify({
+
+            name,
+            email,
+
+            birth_date:birthDate,
+
+            birth_time:birthTime,
+
+            birth_place:birthPlace
+
+          })
+
+        }
       );
 
+
+
+      if(!response.ok){
+
+        const err = await response.json();
+
+        throw new Error(
+          err.detail || "PDF generation failed"
+        );
+
+      }
+
+
+
+      const blob = await response.blob();
+
+
+      const url = window.URL.createObjectURL(blob);
+
+
+      const link=document.createElement("a");
+
+
+      link.href=url;
+
+
+      link.download="Horoscope_Report.pdf";
+
+
+      document.body.appendChild(link);
+
+
+      link.click();
+
+
+      link.remove();
+
+
+      window.URL.revokeObjectURL(url);
+
+
+
+      setPdfMessage(
+        "✅ PDF Download Successfully"
+      );
+
+
+    }
+    catch(error){
+
+      setPdfError(error.message);
+
+    }
+    finally{
+
+      setPdfLoading(false);
+
     }
 
-
-
-    const blob = await response.blob();
-
-
-
-    const url = window.URL.createObjectURL(blob);
-
-
-
-    const link = document.createElement("a");
-
-
-    link.href = url;
-
-
-    link.download =
-      "AstroAI_Horoscope_Report.pdf";
-
-
-
-    document.body.appendChild(link);
-
-
-    link.click();
-
-
-    link.remove();
-
-
-
-    window.URL.revokeObjectURL(url);
-
-
-
-    setPdfMessage(
-      "✅ PDF Download Successfully"
-    );
-
-
-
-  }
-  catch(error){
-
-    console.log(error);
-
-
-    setPdfError(
-      "❌ PDF Download Failed"
-    );
-
-  }
-  finally{
-
-    setPdfLoading(false);
-
   }
 
-}
+
 
 
 return (
@@ -144,25 +176,28 @@ return (
 <div className="max-w-4xl mx-auto">
 
 
-<div className="bg-white rounded-xl shadow p-6">
-
-
-<h1 className="text-3xl font-bold mb-6">
-⭐ Daily Horoscope
+<h1 className="text-3xl font-bold text-center mb-8">
+🔮 AstroAI Horoscope
 </h1>
 
 
 
-<div className="flex gap-3">
+<div className="bg-white rounded-xl shadow p-6 mb-6">
+
+
+<h2 className="text-xl font-semibold mb-4">
+Daily Horoscope
+</h2>
+
 
 
 <select
 
+className="border p-3 rounded w-full"
+
 value={sign}
 
 onChange={(e)=>setSign(e.target.value)}
-
-className="border rounded-lg p-3 flex-1"
 
 >
 
@@ -170,53 +205,52 @@ className="border rounded-lg p-3 flex-1"
 Select Zodiac Sign
 </option>
 
-
 <option value="aries">
-Aries (मेष)
+Aries ♈
 </option>
 
 <option value="taurus">
-Taurus (वृषभ)
+Taurus ♉
 </option>
 
 <option value="gemini">
-Gemini (मिथुन)
+Gemini ♊
 </option>
 
 <option value="cancer">
-Cancer (कर्क)
+Cancer ♋
 </option>
 
 <option value="leo">
-Leo (सिंह)
+Leo ♌
 </option>
 
 <option value="virgo">
-Virgo (कन्या)
+Virgo ♍
 </option>
 
 <option value="libra">
-Libra (तुला)
+Libra ♎
 </option>
 
 <option value="scorpio">
-Scorpio (वृश्चिक)
+Scorpio ♏
 </option>
 
 <option value="sagittarius">
-Sagittarius (धनु)
+Sagittarius ♐
 </option>
 
 <option value="capricorn">
-Capricorn (मकर)
+Capricorn ♑
 </option>
 
 <option value="aquarius">
-Aquarius (कुंभ)
+Aquarius ♒
 </option>
 
 <option value="pisces">
-Pisces (मीन)
+Pisces ♓
 </option>
 
 
@@ -224,19 +258,18 @@ Pisces (मीन)
 
 
 
-
 <button
 
 onClick={getHoroscope}
 
-className="bg-indigo-600 text-white px-6 rounded-lg hover:bg-indigo-700"
+className="mt-4 bg-purple-600 text-white px-5 py-3 rounded-lg"
 
 >
 
 {
-loading
+loading 
 ?
-"⏳ Loading..."
+"Loading..."
 :
 "Get Horoscope"
 }
@@ -248,42 +281,126 @@ loading
 </div>
 
 
-</div>
 
 
+{
+result && (
+
+<div className="bg-white shadow rounded-xl p-6 mb-6">
 
 
-
-{result?.error && (
-
-<div className="mt-6 bg-red-100 text-red-700 p-4 rounded-lg">
-
-{result.error}
-
-</div>
-
-)}
-
-
-
-
-
-
-{result && !result.error && (
-
-<div className="mt-8 bg-white rounded-xl shadow p-6">
-
-
-<div className="flex justify-between items-center mb-5">
-
-
-<h2 className="text-2xl font-bold">
-
-⭐ {result.sign}
-
+<h2 className="text-xl font-bold">
+{result.sign}
 </h2>
 
 
+<p className="mt-3">
+{result.prediction}
+</p>
+
+
+<p className="mt-3">
+{result.insights}
+</p>
+
+
+</div>
+
+)
+
+}
+
+
+
+
+
+<div className="bg-white shadow rounded-xl p-6">
+
+
+<h2 className="text-xl font-semibold mb-4">
+Download Kundli Horoscope PDF
+</h2>
+
+
+
+<input
+
+className="border p-3 rounded w-full mb-3"
+
+placeholder="Your Name"
+
+value={name}
+
+onChange={(e)=>setName(e.target.value)}
+
+ />
+
+
+
+<input
+
+type="email"
+
+className="border p-3 rounded w-full mb-3"
+
+placeholder="Email"
+
+value={email}
+
+onChange={(e)=>setEmail(e.target.value)}
+
+ />
+
+
+
+<input
+
+type="date"
+
+className="border p-3 rounded w-full mb-3"
+
+value={birthDate}
+
+onChange={(e)=>setBirthDate(e.target.value)}
+
+ />
+
+
+
+<input
+
+type="time"
+
+className="border p-3 rounded w-full mb-3"
+
+value={birthTime}
+
+onChange={(e)=>setBirthTime(e.target.value)}
+
+ />
+
+
+
+<input
+
+className="border p-3 rounded w-full mb-3"
+
+placeholder="Birth Place"
+
+value={birthPlace}
+
+onChange={(e)=>setBirthPlace(e.target.value)}
+
+ />
+
+
+<PaymentButton
+
+email={email}
+
+onSuccess={()=>setPaid(true)}
+
+/>
 
 <button
 
@@ -291,172 +408,46 @@ onClick={downloadPDF}
 
 disabled={pdfLoading}
 
-className="bg-green-600 text-white px-5 py-2 rounded-lg hover:bg-green-700"
+className="bg-green-600 text-white px-6 py-3 rounded-lg"
 
 >
 
 
 {
-
 pdfLoading
-
 ?
-
-"⏳ Generating PDF..."
-
+"Generating PDF..."
 :
-
-"📄 Download Professional PDF"
-
+"Download PDF"
 }
 
 
 </button>
 
 
-</div>
-
-
-
-
 
 {
 pdfMessage &&
 
-<div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4">
-
+<p className="text-green-600 mt-3">
 {pdfMessage}
-
-</div>
+</p>
 
 }
-
-
 
 
 
 {
 pdfError &&
 
-<div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">
-
+<p className="text-red-600 mt-3">
 {pdfError}
-
-</div>
+</p>
 
 }
 
 
 
-
-
-<div className="space-y-4">
-
-
-<div>
-<h3 className="font-bold">
-Rashi
-</h3>
-<p>{result.rashi}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Nakshatra
-</h3>
-<p>{result.nakshatra}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Today's Prediction
-</h3>
-<p>{result.prediction}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Career
-</h3>
-<p>{result.career}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Love
-</h3>
-<p>{result.love}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Health
-</h3>
-<p>{result.health}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Finance
-</h3>
-<p>{result.finance}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Lucky Number
-</h3>
-<p>{result.lucky_number}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Lucky Color
-</h3>
-<p>{result.lucky_color}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Lucky Day
-</h3>
-<p>{result.lucky_day}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Lucky Mantra
-</h3>
-<p>{result.lucky_mantra}</p>
-</div>
-
-
-
-<div>
-<h3 className="font-bold">
-Remedy
-</h3>
-<p>{result.remedy}</p>
 </div>
 
 
@@ -466,15 +457,8 @@ Remedy
 
 </div>
 
-)}
-
-
-
-</div>
-
-
-</div>
 
 );
+
 
 }

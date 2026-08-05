@@ -66,3 +66,27 @@ def ask_gemini(prompt: str) -> str:
 
 def clear_chat():
     create_chat()
+
+
+
+
+def ask_gemini_image(prompt: str, image_bytes: bytes, mime_type: str):
+
+    try:
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                types.Part.from_bytes(
+                    data=image_bytes,
+                    mime_type=mime_type,
+                ),
+                prompt,
+            ],
+        )
+
+        return response.text
+
+    except Exception as e:
+        print("Gemini Image Error:", e)
+        return f"Gemini Error: {e}"

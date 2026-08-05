@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 class HoroscopeRequest(BaseModel):
     name: str
+    email: str
     birth_date: str
     birth_time: str
     birth_place: str

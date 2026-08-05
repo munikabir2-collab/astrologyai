@@ -1,10 +1,11 @@
 import { useState } from "react";
-
+import PaymentButton from "../components/PaymentButton";
 export default function Dasha() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [place, setPlace] = useState("");
-
+  const [email, setEmail] = useState("");
+  const [paid, setPaid] = useState(false);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -74,13 +75,37 @@ export default function Dasha() {
             value={place}
             onChange={(e) => setPlace(e.target.value)}
           />
+          <input
+            type="email"
+            className="border p-3 rounded"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
-
+        <PaymentButton
+           email={email}
+           reportType="dasha"
+           amountText="₹99"
+           onSuccess={() => {
+           setPaid(true);
+           alert("✅ Payment Successful");
+           }}
+/>   
         <button
-          onClick={getDasha}
-          className="mt-5 bg-purple-600 text-white px-6 py-3 rounded"
-        >
-          {loading ? "Calculating..." : "Get Dasha"}
+           onClick={getDasha}
+           disabled={!paid || loading}
+           className={`mt-5 ml-3 px-6 py-3 rounded text-white ${
+         paid
+             ? "bg-purple-600 hover:bg-purple-700"
+             : "bg-gray-400 cursor-not-allowed"
+            }`}
+>
+           {loading
+              ? "Calculating..."
+              : paid
+              ? "🔱 Get Dasha"
+              : "💳 Pay First"}
         </button>
       </div>
 

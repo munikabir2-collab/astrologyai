@@ -3,12 +3,12 @@ import { useState } from "react";
 export default function Kundli() {
 
   const [form, setForm] = useState({
-    name: "",
-    birth_date: "",
-    birth_time: "",
-    birth_place: "",
-  });
-
+  name: "",
+  email: "",
+  birth_date: "",
+  birth_time: "",
+  birth_place: "",
+});
 
   const [loading, setLoading] = useState(false);
 
@@ -105,7 +105,7 @@ export default function Kundli() {
 
       const response = await fetch(
 
-        "http://127.0.0.1:8000/pdf/generate",
+        "http://127.0.0.1:8000/astrology/download-pdf",
 
         {
 

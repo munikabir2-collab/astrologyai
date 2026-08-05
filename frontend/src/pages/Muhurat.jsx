@@ -1,10 +1,11 @@
 
 import { useState } from "react";
-
+import PaymentButton from "../components/PaymentButton";
 const API_URL = "http://127.0.0.1:8000";
 
 function Muhurat() {
   const [form, setForm] = useState({
+    email: "",
     target_date: "",
     place: "",
     latitude: "",
@@ -12,7 +13,7 @@ function Muhurat() {
     purpose: "marriage",
     timezone: "Asia/Kolkata",
   });
-
+  const [paid, setPaid] = useState(false); 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
@@ -174,9 +175,18 @@ function Muhurat() {
 
               <div className="col-md-6">
                 <label className="form-label">
+                  Email
                   Timezone
                 </label>
-
+                  <input
+                    type="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="form-control"
+                    placeholder="example@gmail.com"
+                    required
+                   />
                 <input
                   type="text"
                   name="timezone"
@@ -187,14 +197,32 @@ function Muhurat() {
               </div>
 
               <div className="col-12">
+                 <PaymentButton
+                  email={form.email}
+                  reportType="muhurat"
+                  amountText="₹49"
+                  onSuccess={() => {
+                  setPaid(true);
+                  alert("✅ Payment Successful");
+                }}
+              />
+
+
+
                 <button
-                  type="submit"
-                  className="btn btn-primary px-4"
-                  disabled={loading}
-                >
-                  {loading
-                    ? "Calculating..."
-                    : "Get Muhurat"}
+                 type="submit"
+                      disabled={!paid || loading}
+                      className={`btn px-4 ms-2 ${
+             paid
+                     ? "btn-primary"
+                     : "btn-secondary"
+             }`}
+              >
+                     {loading
+                     ? "Calculating..."
+                     : paid
+                     ? "🔱 Generate Muhurat"
+                     : "💳 Pay First"}
                 </button>
               </div>
 

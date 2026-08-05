@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form
 from pydantic import BaseModel
 from app.services.kundli_engine import get_kundli_report
 from app.services.geocode_service import get_coordinates
@@ -6,9 +6,16 @@ from app.services.astrology_engine import calculate_chart
 from app.services.panchang_engine import get_panchang
 from app.services.dasha_engine import get_vimshottari_dasha
 from app.services.astrology_ai_service import generate_astrology_report
+from app.services.user_service import get_user_by_email
 from app.services.pdf_service import generate_pdf
 from fastapi.responses import Response
 from app.services.muhurat_service import calculate_muhurat
+from app.services.payment_service import has_access
+from sqlalchemy.orm import Session
+from app.services.payment_service import verify_feature_payment
+from app.database import get_db
+from app.services.palm_service import analyze_palm
+
 from app.schemas.astrology import (
     HoroscopeRequest,
     AstrologyResponse,
@@ -23,15 +30,24 @@ router = APIRouter(
 )
 
 
-class HoroscopeRequest(BaseModel):
-    name: str
-    birth_date: str      # YYYY-MM-DD
-    birth_time: str      # HH:MM
-    birth_place: str
-
 
 @router.post("/horoscope")
-def horoscope(data: HoroscopeRequest):
+def horoscope(
+    data: HoroscopeRequest,
+    db: Session = Depends(get_db),
+):
+
+    # Payment Check
+    if not has_access(
+        db=db,
+        email=data.email,
+        report_type="horoscope",
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Please purchase Horoscope Report.",
+        )
+
     try:
         location = get_coordinates(data.birth_place)
 
@@ -88,7 +104,6 @@ def horoscope(data: HoroscopeRequest):
             status_code=500,
             detail=str(e),
         )
-
 @router.get("/prediction")
 def prediction(sign: str):
 
@@ -188,19 +203,114 @@ def prediction(sign: str):
             "lucky_day": "Wednesday",
             "lucky_mantra": "ॐ बुधाय नमः",
             "remedy": "Donate green vegetables."
-        }
+        },
 
+        "libra": {
+            "sign": "Libra",
+            "rashi": "तुला",
+            "nakshatra": "Chitra",
+            "prediction": "Today is favorable for balance and harmony.",
+            "career": "Communication skills will impress others.",
+            "love": "Relationships will strengthen.",
+            "health": "Take adequate rest.",
+            "finance": "Review financial plans.",
+            "lucky_number": "6",
+            "lucky_color": "Pink",
+            "lucky_day": "Friday",
+            "lucky_mantra": "ॐ शुक्राय नमः",
+            "remedy": "Donate white sweets."
+        },
+
+        "scorpio": {
+            "sign": "Scorpio",
+            "rashi": "वृश्चिक",
+            "nakshatra": "Anuradha",
+            "prediction": "Determination brings success.",
+            "career": "Hard work will be recognized.",
+            "love": "Trust will strengthen relationships.",
+            "health": "Avoid stress.",
+            "finance": "Good day for savings.",
+            "lucky_number": "9",
+            "lucky_color": "Maroon",
+            "lucky_day": "Tuesday",
+            "lucky_mantra": "ॐ मंगलाय नमः",
+            "remedy": "Offer red flowers to Hanuman."
+        },
+
+        "sagittarius": {
+            "sign": "Sagittarius",
+            "rashi": "धनु",
+            "nakshatra": "Moola",
+            "prediction": "Learning brings success.",
+            "career": "New opportunities may arise.",
+            "love": "Meaningful conversations strengthen bonds.",
+            "health": "Take care of your diet.",
+            "finance": "Avoid risky investments.",
+            "lucky_number": "3",
+            "lucky_color": "Purple",
+            "lucky_day": "Thursday",
+            "lucky_mantra": "ॐ बृहस्पतये नमः",
+            "remedy": "Donate yellow gram."
+        },
+
+        "capricorn": {
+            "sign": "Capricorn",
+            "rashi": "मकर",
+            "nakshatra": "Shravana",
+            "prediction": "Patience brings success.",
+            "career": "Leadership appreciated.",
+            "love": "Spend time with loved ones.",
+            "health": "Avoid overwork.",
+            "finance": "Good day for saving money.",
+            "lucky_number": "8",
+            "lucky_color": "Dark Blue",
+            "lucky_day": "Saturday",
+            "lucky_mantra": "ॐ शनैश्चराय नमः",
+            "remedy": "Donate black sesame."
+        },
+
+        "aquarius": {
+            "sign": "Aquarius",
+            "rashi": "कुंभ",
+            "nakshatra": "Shatabhisha",
+            "prediction": "Innovation brings success.",
+            "career": "Creative ideas will be appreciated.",
+            "love": "Relationships improve.",
+            "health": "Stay hydrated.",
+            "finance": "Long-term investments are favorable.",
+            "lucky_number": "8",
+            "lucky_color": "Blue",
+            "lucky_day": "Saturday",
+            "lucky_mantra": "ॐ शनैश्चराय नमः",
+            "remedy": "Donate black sesame."
+        },
+
+        "pisces": {
+            "sign": "Pisces",
+            "rashi": "मीन",
+            "nakshatra": "Revati",
+            "prediction": "Spirituality brings peace.",
+            "career": "Intuition helps in decisions.",
+            "love": "Romantic atmosphere.",
+            "health": "Practice meditation.",
+            "finance": "Avoid impulsive spending.",
+            "lucky_number": "7",
+            "lucky_color": "Sea Green",
+            "lucky_day": "Thursday",
+            "lucky_mantra": "ॐ गुरवे नमः",
+            "remedy": "Offer bananas to Vishnu."
+        }
     }
 
-    return predictions.get(
-        sign.lower(),
-        {
-            "sign": sign,
-            "prediction": "Prediction not available."
-        }
-    )
+    prediction_data = predictions.get(sign.lower())
 
+    if prediction_data is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prediction not available."
+        )
 
+    return prediction_data
 @router.post("/kundli")
 def kundli(request: HoroscopeRequest):
 
@@ -253,11 +363,19 @@ def panchang(
 
 @router.get("/dasha")
 def dasha(
+    email: str,
     date: str,
     time: str,
     place: str,
-):
+    db: Session = Depends(get_db),
+    ):
     try:
+        # Payment Check
+        verify_feature_payment(
+            db=db,
+            email=email,
+            feature="dasha",
+        )
         # Location
         location = get_coordinates(place)
         latitude = location["latitude"]
@@ -319,29 +437,30 @@ def dasha(
             status_code=500,
             detail=str(e),
         )
-
 @router.post("/download-pdf")
-def download_pdf(data: HoroscopeRequest):
-     
-    # Temporary Demo Check
-    is_pro = False
-
-    if not is_pro:
-        raise HTTPException(
-            status_code=403,
-            detail="Please subscribe to Pro plan to download PDF."
-        )
+def download_pdf(
+    data: HoroscopeRequest,
+    db: Session = Depends(get_db),
+):
 
     try:
 
+        # Payment Check
+        if not has_access(
+            db=db,
+            email=data.email,
+            report_type="ai_report",
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail="Please purchase AI Astrology Report.",
+            )
+
         # Location
-        location = get_coordinates(
-            data.birth_place
-        )
+        location = get_coordinates(data.birth_place)
 
         latitude = location["latitude"]
         longitude = location["longitude"]
-
 
         # Kundli Chart
         chart = calculate_chart(
@@ -351,7 +470,6 @@ def download_pdf(data: HoroscopeRequest):
             longitude=longitude,
         )
 
-
         # Panchang
         panchang_data = get_panchang(
             data.birth_date,
@@ -360,8 +478,7 @@ def download_pdf(data: HoroscopeRequest):
             longitude,
         )
 
-
-        # Vimshottari Dasha
+        # Dasha
         dasha_result = get_vimshottari_dasha(
             data.birth_date,
             data.birth_time,
@@ -369,105 +486,65 @@ def download_pdf(data: HoroscopeRequest):
             longitude,
         )
 
-
-        # Gemini AI
+        # AI Report
         ai_report = generate_astrology_report(
             chart,
             panchang_data,
             dasha_result,
         )
 
-
         report = {
-
-            "title":
-            "AstroAI Professional Kundli Report",
-
-
-            "name":
-            data.name,
-
-
+            "title": "AstroAI Professional Kundli Report",
+            "name": data.name,
             "birth_details": {
-
-                "date":
-                data.birth_date,
-
-                "time":
-                data.birth_time,
-
-                "place":
-                data.birth_place
-
+                "date": data.birth_date,
+                "time": data.birth_time,
+                "place": data.birth_place,
             },
-
-
             "location": {
-
-                "latitude":
-                latitude,
-
-                "longitude":
-                longitude
-
+                "latitude": latitude,
+                "longitude": longitude,
             },
-
-
-            "chart":
-            chart,
-
-
-            "panchang":
-            panchang_data,
-
-
-            "dasha":
-            dasha_result,
-
-
-            "ai_report":
-            ai_report
-
+            "chart": chart,
+            "panchang": panchang_data,
+            "dasha": dasha_result,
+            "ai_report": ai_report,
         }
-
 
         pdf = generate_pdf(report)
 
-
         return Response(
-
             content=pdf,
-
             media_type="application/pdf",
-
             headers={
-
-                "Content-Disposition":
-                'attachment; filename="AstroAI_Kundli_Report.pdf"'
-
-            }
-
+                "Content-Disposition": 'attachment; filename="AstroAI_Kundli_Report.pdf"'
+            },
         )
 
+    except HTTPException:
+        raise
 
     except Exception as e:
-
         print("PDF ERROR:", e)
-
         raise HTTPException(
             status_code=500,
-            detail=str(e)
+            detail=str(e),
+        )
+@router.post("/muhurat")
+def get_muhurat(
+    request: MuhuratRequest,
+    db: Session = Depends(get_db),
+):
+    try:
+
+        # Payment Verification
+        verify_feature_payment(
+            db=db,
+            email=request.email,
+            feature="muhurat",
         )
 
-
-
-@router.post(
-    "/muhurat",
-    response_model=MuhuratResponse,
-)
-def get_muhurat(request: MuhuratRequest):
-
-    try:
+        # Muhurat Calculation
         return calculate_muhurat(
             target_date=request.target_date,
             place=request.place,
@@ -490,27 +567,29 @@ def get_muhurat(request: MuhuratRequest):
         )
 
 
-@router.get("/plans")
-def plans():
-    return [
-        {
-            "id": 1,
-            "name": "Free",
-            "price": 0,
-            "features": [
-                "Daily Horoscope",
-                "Limited AI"
-            ]
-        },
-        {
-            "id": 2,
-            "name": "Pro",
-            "price": 499,
-            "features": [
-                "Unlimited AI",
-                "Kundli PDF",
-                "Muhurat",
-                "Panchang"
-            ]
-        }
-    ]        
+
+
+
+@router.post("/palm-reading")
+async def palm_reading(
+    email: str = Form(...),
+    name: str = Form(...),
+    image: UploadFile = File(...)
+):
+
+    # Payment Check
+    paid = check_payment(email, "palm")
+
+    if not paid:
+        raise HTTPException(
+            status_code=403,
+            detail="Please purchase Palm Reading Report."
+        )
+
+    result = await analyze_palm(
+        email=email,
+        name=name,
+        image=image
+    )
+
+    return result

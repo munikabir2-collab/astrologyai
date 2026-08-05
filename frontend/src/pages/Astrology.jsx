@@ -19,10 +19,11 @@ function Section({ title, children }) {
 export default function Astrology() {
   const [form, setForm] = useState({
     name: "",
+    email: "",
     birth_date: "",
     birth_time: "",
     birth_place: "",
-  });
+});
 
   const [loading, setLoading] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);

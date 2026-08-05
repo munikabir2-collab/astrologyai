@@ -8,7 +8,7 @@ from app.routers.auth import router as auth_router
 from app.routers.profile import router as profile_router
 from app.routers.gemini import router as gemini_router
 from app.routers.astrology import router as astrology_router
-from app.routers.subscription import router as subscription_router
+from app.routers import compatibility
 from app.routers.payment import router as payment_router
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -43,7 +43,9 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(gemini_router)
 app.include_router(astrology_router)
-app.include_router(subscription_router)
+
+
+app.include_router(compatibility.router)
 app.include_router(payment_router)
 
 

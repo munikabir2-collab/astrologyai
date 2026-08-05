@@ -1,14 +1,39 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 function Sidebar() {
+  const location = useLocation();
+
+  const menuItems = [
+    { icon: "🏠", label: "Dashboard", path: "/dashboard" },
+    { icon: "🤖", label: "Gemini AI Chat", path: "/gemini" },
+    { icon: "🔮", label: "Horoscope", path: "/horoscope" },
+    { icon: "📜", label: "Kundli", path: "/kundli" },
+    { icon: "🌌", label: "Birth Chart", path: "/birth-chart" },
+    { icon: "❤️", label: "Compatibility", path: "/compatibility" },
+    { icon: "🪐", label: "Panchang", path: "/panchang" },
+    { icon: "⏳", label: "Dasha", path: "/dasha" },
+    { icon: "🌠", label: "Transit", path: "/transit" },
+    { icon: "🧿", label: "Numerology", path: "/numerology" },
+    { icon: "🖐", label: "Palm Reading", path: "/palm-reading" },
+    { icon: "😊", label: "Face Reading", path: "/face-reading" },
+    { icon: "📷", label: "Kundli Scanner", path: "/kundli-scanner" },
+    { icon: "🎙", label: "Voice Astrology", path: "/voice-astrology" },
+    { icon: "🧾", label: "AI Report", path: "/ai-report" },
+    { icon: "📅", label: "Muhurat", path: "/muhurat" },
+    { icon: "💰", label: "Premium Reports", path: "/premium" },
+    { icon: "👤", label: "Profile", path: "/profile" },
+    { icon: "⚙", label: "Settings", path: "/settings" },
+  ];
+
   return (
     <div
       style={{
         width: "260px",
         minHeight: "100vh",
         background: "#1e293b",
-        color: "white",
+        color: "#fff",
         padding: "20px",
+        overflowY: "auto",
       }}
     >
       <h2
@@ -24,117 +49,30 @@ function Sidebar() {
         style={{
           listStyle: "none",
           padding: 0,
+          margin: 0,
         }}
       >
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/dashboard"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            🏠 Dashboard
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/gemini"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            🤖 Gemini Chat
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/astrology"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            🔮 Astrology
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/horoscope"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            ⭐ Horoscope
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/birth-chart"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            📜 Birth Chart
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/kundli"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            🪔 Kundli
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/compatibility"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            ❤️ Compatibility
-          </Link>
-        </li>
-
-        <hr />
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/profile"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            👤 Profile
-          </Link>
-        </li>
-
-        <li style={{ marginBottom: 15 }}>
-          <Link
-            to="/settings"
-            style={{
-              color: "white",
-              textDecoration: "none",
-            }}
-          >
-            ⚙️ Settings
-          </Link>
-        </li>
+        {menuItems.map((item) => (
+          <li key={item.path} style={{ marginBottom: 12 }}>
+            <Link
+              to={item.path}
+              style={{
+                display: "block",
+                padding: "10px 12px",
+                borderRadius: "8px",
+                color: "#fff",
+                textDecoration: "none",
+                background:
+                  location.pathname === item.path
+                    ? "#3b82f6"
+                    : "transparent",
+                transition: "0.3s",
+              }}
+            >
+              {item.icon} {item.label}
+            </Link>
+          </li>
+        ))}
       </ul>
     </div>
   );
