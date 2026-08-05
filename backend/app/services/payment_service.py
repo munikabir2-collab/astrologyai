@@ -20,12 +20,12 @@ client = razorpay.Client(
 
 REPORT_PRICES = {
     "gemini": 49,
-    "horoscope": 1,
-    "kundli": 1,
+    "horoscope": 499,
+    "kundli": 499,
     "birth_chart": 79,
     "compatibility": 149,
     "panchang": 0,
-    "dasha": 99,
+    "dasha": 499,
     "transit": 79,
     "numerology": 49,
     "palm": 99,

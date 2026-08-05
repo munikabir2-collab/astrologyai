@@ -13,8 +13,8 @@ export default function Kundli() {
   const [loading, setLoading] = useState(false);
 
   const [result, setResult] = useState(null);
-
-
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  
   // PDF states
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfMessage, setPdfMessage] = useState("");
@@ -84,7 +84,111 @@ export default function Kundli() {
 
   }
 
+async function payAndDownloadPDF() {
 
+  try {
+
+    const orderRes = await fetch(
+      "http://127.0.0.1:8000/payment/create-order",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          report_type: "kundli",
+        }),
+      }
+    );
+
+    const orderData = await orderRes.json();
+
+    if (!orderData.success) {
+      alert("Unable to create order");
+      return;
+    }
+
+    const options = {
+
+      key: orderData.key,
+
+      amount: orderData.order.amount,
+
+      currency: orderData.order.currency,
+
+      name: "AstroAI",
+
+      description: "Professional Kundli PDF",
+
+      order_id: orderData.order.id,
+
+      handler: async function (response) {
+
+        const verifyRes = await fetch(
+          "http://127.0.0.1:8000/payment/verify",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json",
+            },
+
+            body: JSON.stringify({
+
+              email: form.email,
+
+              report_type: "kundli",
+
+              razorpay_order_id:
+                response.razorpay_order_id,
+
+              razorpay_payment_id:
+                response.razorpay_payment_id,
+
+              razorpay_signature:
+                response.razorpay_signature,
+
+            }),
+          }
+        );
+
+        const verifyData = await verifyRes.json();
+
+        if (verifyData.success) {
+
+          alert("✅ Payment Successful");
+
+          await downloadPDF();
+
+        } else {
+
+          alert("Payment Verification Failed");
+
+        }
+
+      },
+
+      theme: {
+        color: "#4F46E5",
+      },
+
+    };
+
+    const razorpay = new window.Razorpay(options);
+
+    razorpay.open();
+
+  }
+
+  catch (err) {
+
+    console.log(err);
+
+    alert("Payment Failed");
+
+  }
+
+}
 
 
 
@@ -225,7 +329,14 @@ return (
 
 
 <div className="grid md:grid-cols-2 gap-4">
-
+<input
+  className="border p-3 rounded"
+  type="email"
+  placeholder="Email"
+  name="email"
+  value={form.email}
+  onChange={handleChange}
+/>
 
 <input
 
@@ -357,45 +468,23 @@ result && !result.error &&
 
 <div className="flex justify-between items-center mb-6">
 
+  <h2 className="text-2xl font-bold">
+    🪐 Kundli Details
+  </h2>
 
-<h2 className="text-2xl font-bold">
-
-🪐 Kundli Details
-
-</h2>
-
-
-
-<button
-
-onClick={downloadPDF}
-
-disabled={pdfLoading}
-
-className="bg-green-600 hover:bg-green-700 text-white px-5 py-3 rounded-lg"
-
+  <button
+    onClick={generateKundli}
+    className="mt-6 bg-indigo-600 text-white px-6 py-3 rounded-lg"
 >
-
-
-{
-
-pdfLoading
-
-?
-
-"⏳ Creating PDF..."
-
-:
-
-"📄 Download Professional PDF"
-
-}
-
-
+    {loading ? "⏳ Generating..." : "Generate Kundli"}
 </button>
 
-
-
+<button
+    onClick={payAndDownloadPDF}
+    className="mt-4 bg-green-600 text-white px-6 py-3 rounded-lg"
+>
+    💳 Pay ₹499 & Download PDF
+</button>
 </div>
 
 

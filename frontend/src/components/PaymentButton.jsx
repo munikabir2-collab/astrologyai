@@ -3,7 +3,7 @@ import axios from "axios";
 export default function PaymentButton({
   email,
   reportType = "horoscope",
-  amountText = "₹99",
+  amountText = "₹499",
   onSuccess,
 }) {
   const buyReport = async () => {
