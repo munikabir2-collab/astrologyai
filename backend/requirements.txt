@@ -28,3 +28,5 @@ jinja2
 email-validator
 
 PyPDF2>=3.0.1
+
+python-docx>=1.2.0
