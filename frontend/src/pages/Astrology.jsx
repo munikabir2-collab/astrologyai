@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 function Section({ title, children }) {
   return (
     <div className="mb-8">
@@ -58,7 +58,7 @@ export default function Astrology() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/horoscope",
+        "/astrology/horoscope",
         {
           method: "POST",
           headers: {
@@ -90,7 +90,7 @@ export default function Astrology() {
       setPdfLoading(true);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/download-pdf",
+        "/astrology/download-pdf",
         {
           method: "POST",
           headers: {

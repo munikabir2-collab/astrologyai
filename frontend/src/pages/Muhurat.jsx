@@ -1,7 +1,8 @@
 
 import { useState } from "react";
+import API from "../api/auth";
 import PaymentButton from "../components/PaymentButton";
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://astrologyai-s2y5.onrender.com";
 
 function Muhurat() {
   const [form, setForm] = useState({
@@ -35,30 +36,16 @@ function Muhurat() {
     setResult(null);
 
     try {
-      const response = await fetch(`${API_URL}/astrology/muhurat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          target_date: form.target_date,
-          place: form.place,
-          latitude: Number(form.latitude),
-          longitude: Number(form.longitude),
-          purpose: form.purpose,
-          timezone: form.timezone,
-        }),
-      });
+     const { data } = await API.post("/astrology/muhurat", {
+  target_date: form.target_date,
+  place: form.place,
+  latitude: Number(form.latitude),
+  longitude: Number(form.longitude),
+  purpose: form.purpose,
+  timezone: form.timezone,
+});
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.detail || "Unable to calculate Muhurat"
-        );
-      }
-
-      setResult(data);
+setResult(data);
     } catch (err) {
       setError(err.message || "Something went wrong");
     } finally {

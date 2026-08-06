@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 export default function Kundli() {
 
   const [form, setForm] = useState({
@@ -37,59 +37,42 @@ export default function Kundli() {
 
   async function generateKundli() {
 
-    setLoading(true);
+  setLoading(true);
+  setResult(null);
 
-    setResult(null);
+  try {
 
+    const res = await API.post(
+      "/astrology/kundli",
+      form
+    );
 
-    try {
+    setResult(res.data);
 
-      const res = await fetch(
-        "http://127.0.0.1:8000/astrology/kundli",
-        {
-          method:"POST",
+  } catch (err) {
 
-          headers:{
-            "Content-Type":"application/json",
-          },
+    console.log(err);
 
-          body:JSON.stringify(form),
+    setResult({
+      error:"Unable to connect to AstroAI API"
+    });
 
-        }
-      );
+  } finally {
 
-
-      const data = await res.json();
-
-
-      setResult(data);
-
-
-    }
-
-    catch(err){
-
-      setResult({
-        error:"Unable to connect to AstroAI API"
-      });
-
-    }
-
-
-    finally{
-
-      setLoading(false);
-
-    }
+    setLoading(false);
 
   }
+
+}
+
+  
 
 async function payAndDownloadPDF() {
 
   try {
 
     const orderRes = await fetch(
-      "http://127.0.0.1:8000/payment/create-order",
+      "/payment/create-order",
       {
         method: "POST",
         headers: {
@@ -125,7 +108,7 @@ async function payAndDownloadPDF() {
       handler: async function (response) {
 
         const verifyRes = await fetch(
-          "http://127.0.0.1:8000/payment/verify",
+          "/payment/verify",
           {
             method: "POST",
 
@@ -209,7 +192,7 @@ async function payAndDownloadPDF() {
 
       const response = await fetch(
 
-        "http://127.0.0.1:8000/astrology/download-pdf",
+        "https://astrologyai-s2y5.onrender.com/astrology/download-pdf",
 
         {
 

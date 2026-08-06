@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-
+import API from "../api/auth";
 export default function DownloadPDFButton({ data }) {
 
     const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function DownloadPDFButton({ data }) {
             setError("");
 
             const response = await axios.post(
-                "http://127.0.0.1:8000/astrology/download-pdf",
+                "/astrology/download-pdf",
                 data,
                 {
                     responseType: "blob"

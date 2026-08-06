@@ -1,4 +1,5 @@
 import { useState } from "react";
+import API from "../api/auth";
 import PaymentButton from "../components/PaymentButton";
 export default function Dasha() {
   const [date, setDate] = useState("");
@@ -20,7 +21,7 @@ export default function Dasha() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/astrology/dasha?date=${date}&time=${time}&place=${encodeURIComponent(
+        `/astrology/dasha?date=${date}&time=${time}&place=${encodeURIComponent(
           place
         )}`
       );

@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import API from "../api/auth";
 export default function PaymentButton({
   email,
   reportType = "horoscope",
@@ -10,7 +10,7 @@ export default function PaymentButton({
     try {
       // Create Razorpay Order
       const res = await axios.post(
-        "http://127.0.0.1:8000/payment/create-order",
+        "/payment/create-order",
         {
           report_type: reportType,
         }
@@ -34,7 +34,7 @@ export default function PaymentButton({
         handler: async function (response) {
           try {
             await axios.post(
-              "http://127.0.0.1:8000/payment/verify",
+              "/payment/verify",
               {
                 email,
                 report_type: reportType,

@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 export default function Panchang() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -9,29 +9,42 @@ export default function Panchang() {
   const [loading, setLoading] = useState(false);
 
   async function getPanchang() {
-    if (!date || !time || !place) {
-      alert("Please fill all fields");
-      return;
-    }
+  if (!date || !time || !place) {
+    alert("Please fill all fields");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/astrology/panchang?date=${date}&time=${time}&place=${encodeURIComponent(place)}`
-      );
+  try {
 
-      const data = await res.json();
-      setResult(data);
-    } catch (err) {
-      setResult({
-        success: false,
-        error: "Unable to connect to AstroAI API",
-      });
-    }
+    const res = await API.get(
+      "/astrology/panchang",
+      {
+        params: {
+          date,
+          time,
+          place,
+        },
+      }
+    );
+
+    setResult(res.data);
+
+  } catch (err) {
+
+    console.log(err);
+
+    setResult({
+      error: "Unable to connect to AstroAI API",
+    });
+
+  } finally {
 
     setLoading(false);
+
   }
+}
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -72,7 +85,7 @@ export default function Panchang() {
         </button>
       </div>
 
-      {result?.success && (
+      {result && !result.error && (
         <div className="max-w-4xl mx-auto mt-8 bg-white rounded-xl shadow p-6">
           <h2 className="text-2xl font-bold mb-6">
             🪔 Panchang Details

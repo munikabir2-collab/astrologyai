@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 export default function BirthChart() {
 
   const [form, setForm] = useState({
@@ -27,7 +27,7 @@ export default function BirthChart() {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/kundli",
+        "/astrology/kundli",
         {
           method: "POST",
           headers: {

@@ -1,8 +1,9 @@
 import { useState } from "react";
+import API from "../api/auth";
 async function payCompatibility() {
   try {
     const res = await fetch(
-      "http://127.0.0.1:8000/payment/create-order",
+      "/payment/create-order",
       {
         method: "POST",
         headers: {
@@ -31,7 +32,7 @@ async function payCompatibility() {
 
       handler: async function (response) {
         const verify = await fetch(
-          "http://127.0.0.1:8000/payment/verify",
+          "/payment/verify",
           {
             method: "POST",
             headers: {
@@ -99,7 +100,7 @@ function Compatibility() {
 
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/astrology/compatibility",
+        "/astrology/compatibility",
         {
           method: "POST",
           headers: {

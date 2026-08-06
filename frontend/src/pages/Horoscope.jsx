@@ -29,7 +29,7 @@ export default function Horoscope() {
     try {
 
       const res = await fetch(
-        `http://127.0.0.1:8000/astrology/prediction?sign=${sign}`
+        `https://astrologyai-s2y5.onrender.com/astrology/prediction?sign=${sign}`
       );
 
 
@@ -79,7 +79,7 @@ export default function Horoscope() {
 
 
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/download-pdf",
+        "https://astrologyai-s2y5.onrender.com/astrology/download-pdf",
         {
           method:"POST",
 
