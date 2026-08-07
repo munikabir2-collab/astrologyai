@@ -21,20 +21,34 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await API.post("/auth/login", form);
+      // OAuth2PasswordRequestForm expects username + password
+      const formData = new URLSearchParams();
+      formData.append("username", form.email);
+      formData.append("password", form.password);
+
+      const res = await API.post(
+        "/auth/login",
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("email", form.email);
 
       alert("Login Successful");
 
-      // Save Token
-      localStorage.setItem("token", res.data.access_token);
-
-      // Save Email
-      localStorage.setItem("email", form.email);
-
       navigate("/dashboard");
-
     } catch (err) {
-      alert(err.response?.data?.detail || "Login Failed");
+      console.error(err.response?.data);
+
+      alert(
+        err.response?.data?.detail ||
+        "Login Failed"
+      );
     }
   };
 
@@ -67,7 +81,10 @@ export default function Login() {
             required
           />
 
-          <button className="btn btn-primary w-100">
+          <button
+            type="submit"
+            className="btn btn-primary w-100"
+          >
             Login
           </button>
         </form>
