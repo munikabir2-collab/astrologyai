@@ -10,7 +10,6 @@ SECRET_KEY = "your-secret-key"
 ALGORITHM = "HS256"
 
 
-# 👇 Ye line function se pehle honi chahiye
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/auth/login"
 )
@@ -52,12 +51,12 @@ def create_access_token(data: dict):
     )
 
 
-# 👇 Ye oauth2_scheme ke baad hona chahiye
 def get_current_user(
     token: str = Depends(oauth2_scheme)
 ):
 
     try:
+
         payload = jwt.decode(
             token,
             SECRET_KEY,
@@ -74,7 +73,9 @@ def get_current_user(
 
         return email
 
+
     except JWTError:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
