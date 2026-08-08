@@ -10,6 +10,8 @@ export default function Login() {
     password: "",
   });
 
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -19,36 +21,37 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      // OAuth2PasswordRequestForm expects username + password
-      const formData = new URLSearchParams();
-      formData.append("username", form.email);
-      formData.append("password", form.password);
+      console.log("API URL:", import.meta.env.VITE_API_URL);
 
-      const res = await API.post(
-        "/auth/login",
-        formData,
-        {
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-        }
-      );
+      const res = await API.post("/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
+
+      console.log("Login Response:", res.data);
 
       localStorage.setItem("token", res.data.access_token);
       localStorage.setItem("email", form.email);
 
       alert("Login Successful");
-
       navigate("/dashboard");
+
     } catch (err) {
-      console.error(err.response?.data);
+      console.error("Login Error:", err);
+      console.error("Response:", err.response?.data);
 
       alert(
         err.response?.data?.detail ||
+        err.response?.data?.message ||
+        JSON.stringify(err.response?.data) ||
+        err.message ||
         "Login Failed"
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -82,16 +85,16 @@ export default function Login() {
           />
 
           <button
-            type="submit"
             className="btn btn-primary w-100"
+            disabled={loading}
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <p className="text-center mt-3">
-          Don't have an account?
-          <Link to="/signup"> Signup</Link>
+          Don't have an account?{" "}
+          <Link to="/signup">Signup</Link>
         </p>
       </div>
     </div>
