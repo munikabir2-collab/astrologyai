@@ -6,6 +6,55 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   "https://astrologyai-s2y5.onrender.com";
 
+// =========================================================
+// Convert objects / arrays into readable React content
+// =========================================================
+function renderValue(value) {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+
+  if (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
+  ) {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return (
+      <ul className="list-disc ml-5 space-y-1">
+        {value.map((item, index) => (
+          <li key={index}>
+            {renderValue(item)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+
+  if (typeof value === "object") {
+    return (
+      <div className="ml-2 space-y-2">
+        {Object.entries(value).map(([key, val]) => (
+          <div
+            key={key}
+            className="border-l-2 border-purple-200 pl-3"
+          >
+            <strong className="capitalize">
+              {key.replace(/_/g, " ")}:
+            </strong>{" "}
+            {renderValue(val)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return String(value);
+}
+
 export default function Horoscope() {
   const [sign, setSign] = useState("");
   const [result, setResult] = useState(null);
@@ -40,11 +89,18 @@ export default function Horoscope() {
     setResult(null);
 
     try {
-      const res = await fetch(
-        `${API_URL}/astrology/prediction?sign=${encodeURIComponent(sign)}`
-      );
+      const url =
+        `${API_URL}/astrology/prediction?sign=` +
+        encodeURIComponent(sign);
+
+      console.log("HOROSCOPE API:", url);
+
+      const res = await fetch(url);
 
       const text = await res.text();
+
+      console.log("HOROSCOPE STATUS:", res.status);
+      console.log("HOROSCOPE RESPONSE:", text);
 
       let data = {};
 
@@ -71,7 +127,9 @@ export default function Horoscope() {
       console.error("Horoscope Error:", err);
 
       setResult({
-        error: err.message || "Unable to connect AstroAI API",
+        error:
+          err.message ||
+          "Unable to connect AstroAI API",
       });
     } finally {
       setLoading(false);
@@ -83,16 +141,25 @@ export default function Horoscope() {
   // =========================================================
   async function downloadPDF() {
     if (!paid) {
-      setPdfError("❌ Please complete payment first.");
+      setPdfError(
+        "❌ Please complete payment first."
+      );
       return;
     }
 
     if (!email) {
-      setPdfError("❌ Please enter your email.");
+      setPdfError(
+        "❌ Please enter your email."
+      );
       return;
     }
 
-    if (!name || !birthDate || !birthTime || !birthPlace) {
+    if (
+      !name ||
+      !birthDate ||
+      !birthTime ||
+      !birthPlace
+    ) {
       setPdfError(
         "❌ Please enter name, birth date, birth time and birth place."
       );
@@ -123,18 +190,24 @@ export default function Horoscope() {
         }
       );
 
-      // Read response safely
       const contentType =
         response.headers.get("content-type") || "";
+
+      console.log(
+        "PDF STATUS:",
+        response.status
+      );
 
       if (!response.ok) {
         const text = await response.text();
 
-        let message = `PDF generation failed (${response.status})`;
+        let message =
+          `PDF generation failed (${response.status})`;
 
         if (text) {
           try {
             const data = JSON.parse(text);
+
             message =
               data.detail ||
               data.message ||
@@ -147,36 +220,55 @@ export default function Horoscope() {
         throw new Error(message);
       }
 
-      // Make sure backend actually returned PDF
-      if (!contentType.includes("application/pdf")) {
+      if (
+        !contentType.includes(
+          "application/pdf"
+        )
+      ) {
         const text = await response.text();
 
         throw new Error(
-          text || "Server did not return a PDF file."
+          text ||
+            "Server did not return a PDF file."
         );
       }
 
-      const blob = await response.blob();
+      const blob =
+        await response.blob();
 
-      const url = window.URL.createObjectURL(blob);
+      const url =
+        window.URL.createObjectURL(
+          blob
+        );
 
-      const link = document.createElement("a");
+      const link =
+        document.createElement("a");
 
       link.href = url;
-      link.download = "Horoscope_Report.pdf";
+
+      link.download =
+        "Horoscope_Report.pdf";
 
       document.body.appendChild(link);
+
       link.click();
+
       link.remove();
 
       window.URL.revokeObjectURL(url);
 
-      setPdfMessage("✅ PDF Download Successfully");
+      setPdfMessage(
+        "✅ PDF Download Successfully"
+      );
     } catch (error) {
-      console.error("PDF Error:", error);
+      console.error(
+        "PDF Error:",
+        error
+      );
 
       setPdfError(
-        error.message || "PDF generation failed"
+        error.message ||
+          "PDF generation failed"
       );
     } finally {
       setPdfLoading(false);
@@ -189,6 +281,7 @@ export default function Horoscope() {
       {/* =====================================================
           TITLE
       ====================================================== */}
+
       <h1 className="text-3xl font-bold text-center mb-6">
         🔮 AI Astrology Report
       </h1>
@@ -196,6 +289,7 @@ export default function Horoscope() {
       {/* =====================================================
           DAILY HOROSCOPE
       ====================================================== */}
+
       <div className="bg-white shadow rounded-xl p-6 mb-6">
 
         <h2 className="text-xl font-semibold mb-4">
@@ -205,43 +299,77 @@ export default function Horoscope() {
         <select
           className="border p-3 rounded w-full"
           value={sign}
-          onChange={(e) => setSign(e.target.value)}
+          onChange={(e) =>
+            setSign(e.target.value)
+          }
         >
           <option value="">
             Select Zodiac Sign
           </option>
 
-          <option value="Aries">Aries ♈</option>
-          <option value="Taurus">Taurus ♉</option>
-          <option value="Gemini">Gemini ♊</option>
-          <option value="Cancer">Cancer ♋</option>
-          <option value="Leo">Leo ♌</option>
-          <option value="Virgo">Virgo ♍</option>
-          <option value="Libra">Libra ♎</option>
-          <option value="Scorpio">Scorpio ♏</option>
+          <option value="Aries">
+            Aries ♈
+          </option>
+
+          <option value="Taurus">
+            Taurus ♉
+          </option>
+
+          <option value="Gemini">
+            Gemini ♊
+          </option>
+
+          <option value="Cancer">
+            Cancer ♋
+          </option>
+
+          <option value="Leo">
+            Leo ♌
+          </option>
+
+          <option value="Virgo">
+            Virgo ♍
+          </option>
+
+          <option value="Libra">
+            Libra ♎
+          </option>
+
+          <option value="Scorpio">
+            Scorpio ♏
+          </option>
+
           <option value="Sagittarius">
             Sagittarius ♐
           </option>
+
           <option value="Capricorn">
             Capricorn ♑
           </option>
+
           <option value="Aquarius">
             Aquarius ♒
           </option>
-          <option value="Pisces">Pisces ♓</option>
+
+          <option value="Pisces">
+            Pisces ♓
+          </option>
         </select>
 
         <button
           onClick={getHoroscope}
           disabled={loading}
-          className="mt-4 bg-purple-600 text-white px-5 py-3 rounded-lg w-full"
+          className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-lg w-full"
         >
           {loading
             ? "Loading..."
             : "Get Horoscope"}
         </button>
 
-        {/* HOROSCOPE RESULT */}
+        {/* =====================================================
+            HOROSCOPE RESULT
+        ====================================================== */}
+
         {result && (
           <div className="mt-6 bg-gray-50 rounded-lg p-5">
 
@@ -250,43 +378,119 @@ export default function Horoscope() {
                 ❌ {result.error}
               </p>
             ) : (
-              <>
-                <h3 className="text-xl font-bold mb-3">
+              <div className="space-y-5">
+
+                {/* SIGN */}
+
+                <h3 className="text-2xl font-bold">
                   {result.sign || sign}
                 </h3>
 
+                {/* PREDICTION */}
+
                 {result.prediction && (
-                  <p className="mb-4">
-                    {result.prediction}
-                  </p>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-2">
+                      🔮 Prediction
+                    </h4>
+
+                    <div className="leading-7">
+                      {renderValue(
+                        result.prediction
+                      )}
+                    </div>
+                  </div>
                 )}
+
+                {/* MESSAGE */}
 
                 {result.message && (
-                  <p className="mb-4">
-                    {result.message}
-                  </p>
+                  <div>
+                    <h4 className="font-semibold text-lg mb-2">
+                      💬 Message
+                    </h4>
+
+                    <div>
+                      {renderValue(
+                        result.message
+                      )}
+                    </div>
+                  </div>
                 )}
 
-                {result.insights && (
-                  <div className="space-y-2">
+                {/* INSIGHTS */}
 
-                    {typeof result.insights === "object" &&
-                      Object.entries(result.insights).map(
+                {result.insights && (
+                  <div>
+                    <h4 className="font-semibold text-lg mb-3">
+                      ✨ Insights
+                    </h4>
+
+                    <div className="space-y-3">
+                      {Object.entries(
+                        result.insights
+                      ).map(
                         ([key, value]) => (
-                          <div key={key}>
-                            <strong className="capitalize">
-                              {key}:
-                            </strong>{" "}
-                            {String(value)}
+                          <div
+                            key={key}
+                            className="bg-white p-3 rounded-lg shadow-sm"
+                          >
+                            <strong className="capitalize block mb-1">
+                              {key.replace(
+                                /_/g,
+                                " "
+                              )}
+                            </strong>
+
+                            <div className="text-gray-700">
+                              {renderValue(
+                                value
+                              )}
+                            </div>
                           </div>
                         )
                       )}
-
+                    </div>
                   </div>
                 )}
-              </>
-            )}
 
+                {/* OTHER API DATA */}
+
+                {Object.entries(result)
+                  .filter(
+                    ([key]) =>
+                      ![
+                        "sign",
+                        "prediction",
+                        "message",
+                        "insights",
+                        "error",
+                      ].includes(key)
+                  )
+                  .map(
+                    ([key, value]) => (
+                      <div
+                        key={key}
+                        className="bg-white p-3 rounded-lg"
+                      >
+                        <strong className="capitalize block mb-1">
+                          {key.replace(
+                            /_/g,
+                            " "
+                          )}
+                        </strong>
+
+                        <div>
+                          {renderValue(
+                            value
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )}
+
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -294,6 +498,7 @@ export default function Horoscope() {
       {/* =====================================================
           PDF REPORT
       ====================================================== */}
+
       <div className="bg-white shadow rounded-xl p-6">
 
         <h2 className="text-xl font-semibold mb-4">
@@ -304,7 +509,9 @@ export default function Horoscope() {
           className="border p-3 rounded w-full mb-3"
           placeholder="Your Name"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) =>
+            setName(e.target.value)
+          }
         />
 
         <input
@@ -312,7 +519,9 @@ export default function Horoscope() {
           className="border p-3 rounded w-full mb-3"
           placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
         />
 
         <input
@@ -343,12 +552,14 @@ export default function Horoscope() {
         />
 
         {/* PAYMENT */}
+
         <PaymentButton
           email={email}
           reportType="horoscope"
           onSuccess={() => {
             setPaid(true);
             setPdfError("");
+
             setPdfMessage(
               "✅ Payment successful. PDF is now unlocked."
             );
@@ -356,6 +567,7 @@ export default function Horoscope() {
         />
 
         {/* PAYMENT STATUS */}
+
         {paid && (
           <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
             ✅ Horoscope Report Paid
@@ -363,12 +575,15 @@ export default function Horoscope() {
         )}
 
         {/* PDF BUTTON */}
+
         <button
           onClick={downloadPDF}
-          disabled={pdfLoading || !paid}
+          disabled={
+            pdfLoading || !paid
+          }
           className={`mt-4 px-6 py-3 rounded-lg w-full text-white ${
             paid
-              ? "bg-green-600"
+              ? "bg-green-600 hover:bg-green-700"
               : "bg-gray-400 cursor-not-allowed"
           }`}
         >
@@ -378,6 +593,7 @@ export default function Horoscope() {
         </button>
 
         {/* SUCCESS */}
+
         {pdfMessage && (
           <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
             {pdfMessage}
@@ -385,6 +601,7 @@ export default function Horoscope() {
         )}
 
         {/* ERROR */}
+
         {pdfError && (
           <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg">
             {pdfError}
