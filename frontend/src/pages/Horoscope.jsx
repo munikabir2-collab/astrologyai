@@ -1,622 +1,795 @@
-
 import { useState } from "react";
 import PaymentButton from "../components/PaymentButton";
 
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "https://astrologyai-s2y5.onrender.com";
+import.meta.env.VITE_API_URL ||
+"https://astrologyai-s2y5.onrender.com";
 
 // =========================================================
-// Convert objects / arrays into readable React content
+// Render objects / arrays safely
 // =========================================================
 function renderValue(value) {
-  if (value === null || value === undefined) {
-    return "—";
-  }
+if (value === null || value === undefined) {
+return "—";
+}
 
-  if (
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return String(value);
-  }
+if (
+typeof value === "string" ||
+typeof value === "number" ||
+typeof value === "boolean"
+) {
+return String(value);
+}
 
-  if (Array.isArray(value)) {
-    return (
-      <ul className="list-disc ml-5 space-y-1">
-        {value.map((item, index) => (
-          <li key={index}>
-            {renderValue(item)}
-          </li>
-        ))}
-      </ul>
-    );
-  }
+if (Array.isArray(value)) {
+return ( <ul className="list-disc ml-5 space-y-1">
+{value.map((item, index) => ( <li key={index}>{renderValue(item)}</li>
+))} </ul>
+);
+}
 
-  if (typeof value === "object") {
-    return (
-      <div className="ml-2 space-y-2">
-        {Object.entries(value).map(([key, val]) => (
-          <div
-            key={key}
-            className="border-l-2 border-purple-200 pl-3"
-          >
-            <strong className="capitalize">
-              {key.replace(/_/g, " ")}:
-            </strong>{" "}
-            {renderValue(val)}
-          </div>
-        ))}
-      </div>
-    );
-  }
+if (typeof value === "object") {
+return ( <div className="ml-2 space-y-2">
+{Object.entries(value).map(([key, val]) => ( <div
+         key={key}
+         className="border-l-2 border-purple-200 pl-3"
+       > <strong className="capitalize">
+{key.replace(/_/g, " ")}: </strong>{" "}
+{renderValue(val)} </div>
+))} </div>
+);
+}
 
-  return String(value);
+return String(value);
 }
 
 export default function Horoscope() {
-  const [sign, setSign] = useState("");
-  const [result, setResult] = useState(null);
+// =========================================================
+// DAILY HOROSCOPE
+// =========================================================
+const [sign, setSign] = useState("");
+const [dailyResult, setDailyResult] = useState(null);
+const [dailyLoading, setDailyLoading] = useState(false);
 
-  const [email, setEmail] = useState("");
+// =========================================================
+// AI ASTROLOGY REPORT
+// =========================================================
+const [name, setName] = useState("");
+const [email, setEmail] = useState("");
+const [birthDate, setBirthDate] = useState("");
+const [birthTime, setBirthTime] = useState("");
+const [birthPlace, setBirthPlace] = useState("");
 
-  const [name, setName] = useState("");
-  const [birthDate, setBirthDate] = useState("");
-  const [birthTime, setBirthTime] = useState("");
-  const [birthPlace, setBirthPlace] = useState("");
+const [aiReport, setAiReport] = useState(null);
+const [aiLoading, setAiLoading] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+// =========================================================
+// PAYMENT
+// =========================================================
+const [paid, setPaid] = useState(false);
 
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfMessage, setPdfMessage] = useState("");
-  const [pdfError, setPdfError] = useState("");
+// =========================================================
+// PDF
+// =========================================================
+const [pdfLoading, setPdfLoading] = useState(false);
+const [pdfMessage, setPdfMessage] = useState("");
+const [pdfError, setPdfError] = useState("");
 
-  const [paid, setPaid] = useState(false);
+// =========================================================
+// DAILY HOROSCOPE
+// GET /astrology/prediction
+// =========================================================
+async function getDailyHoroscope() {
+if (!sign) {
+setDailyResult({
+error: "Please select your zodiac sign.",
+});
+return;
+}
 
-  // =========================================================
-  // GET DAILY HOROSCOPE
-  // =========================================================
-  async function getHoroscope() {
-  if (!sign) {
-    setResult({
-      error: "Please select your zodiac sign.",
-    });
-    return;
+
+setDailyLoading(true);
+setDailyResult(null);
+
+try {
+  const url =
+    `${API_URL}/astrology/prediction?sign=${encodeURIComponent(sign)}`;
+
+  console.log("DAILY HOROSCOPE API:", url);
+
+  const response = await fetch(url);
+
+  const text = await response.text();
+
+  console.log("DAILY HOROSCOPE STATUS:", response.status);
+  console.log("DAILY HOROSCOPE RESPONSE:", text);
+
+  if (!text.trim()) {
+    throw new Error(
+      `Server returned empty response (${response.status})`
+    );
   }
 
-  setLoading(true);
-  setResult(null);
+  let data;
 
   try {
-    const url =
-      `${API_URL}/astrology/prediction?sign=${encodeURIComponent(sign)}`;
+    data = JSON.parse(text);
+  } catch (error) {
+    console.error("Invalid JSON:", text);
 
-    console.log("HOROSCOPE API:", url);
-
-    const res = await fetch(url);
-
-    const text = await res.text();
-
-    console.log("HOROSCOPE STATUS:", res.status);
-    console.log("HOROSCOPE RESPONSE:", text);
-
-    if (!text.trim()) {
-      throw new Error(
-        `Server returned empty response (${res.status})`
-      );
-    }
-
-    let data;
-
-    try {
-      data = JSON.parse(text);
-    } catch (error) {
-      console.error("Invalid JSON response:", text);
-
-      throw new Error(
-        `Server returned invalid JSON (${res.status})`
-      );
-    }
-
-    if (!res.ok) {
-      throw new Error(
-        data.detail ||
-        data.message ||
-        `Horoscope request failed (${res.status})`
-      );
-    }
-
-    setResult(data);
-
-  } catch (err) {
-    console.error("Horoscope Error:", err);
-
-    setResult({
-      error:
-        err.message ||
-        "Unable to connect to AstroAI API",
-    });
-
-  } finally {
-    setLoading(false);
+    throw new Error(
+      `Server returned invalid JSON (${response.status})`
+    );
   }
+
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+        data.message ||
+        `Horoscope request failed (${response.status})`
+    );
+  }
+
+  setDailyResult(data);
+} catch (error) {
+  console.error("Daily Horoscope Error:", error);
+
+  setDailyResult({
+    error:
+      error.message ||
+      "Unable to connect to AstroAI API.",
+  });
+} finally {
+  setDailyLoading(false);
 }
 
-  // =========================================================
-  // DOWNLOAD PDF
-  // =========================================================
-  async function downloadPDF() {
-    if (!paid) {
-      setPdfError(
-        "❌ Please complete payment first."
-      );
-      return;
-    }
 
-    if (!email) {
-      setPdfError(
-        "❌ Please enter your email."
-      );
-      return;
-    }
+}
 
-    if (
-      !name ||
-      !birthDate ||
-      !birthTime ||
-      !birthPlace
-    ) {
-      setPdfError(
-        "❌ Please enter name, birth date, birth time and birth place."
-      );
-      return;
-    }
+// =========================================================
+// VALIDATE AI REPORT FORM
+// =========================================================
+function validateReportForm() {
+if (!name.trim()) {
+setAiReport({
+error: "Please enter your name.",
+});
+return false;
+}
 
-    try {
-      setPdfLoading(true);
-      setPdfMessage("");
-      setPdfError("");
 
-      const response = await fetch(
-        `${API_URL}/astrology/download-pdf`,
-        {
-          method: "POST",
+if (!email.trim()) {
+  setAiReport({
+    error: "Please enter your email.",
+  });
+  return false;
+}
 
-          headers: {
-            "Content-Type": "application/json",
-          },
+if (!birthDate) {
+  setAiReport({
+    error: "Please enter your birth date.",
+  });
+  return false;
+}
 
-          body: JSON.stringify({
-            name,
-            email,
-            birth_date: birthDate,
-            birth_time: birthTime,
-            birth_place: birthPlace,
-          }),
-        }
-      );
+if (!birthTime) {
+  setAiReport({
+    error: "Please enter your birth time.",
+  });
+  return false;
+}
 
-      const contentType =
-        response.headers.get("content-type") || "";
+if (!birthPlace.trim()) {
+  setAiReport({
+    error: "Please enter your birth place.",
+  });
+  return false;
+}
 
-      console.log(
-        "PDF STATUS:",
-        response.status
-      );
+return true;
 
-      if (!response.ok) {
-        const text = await response.text();
 
-        let message =
-          `PDF generation failed (${response.status})`;
+}
 
-        if (text) {
-          try {
-            const data = JSON.parse(text);
+// =========================================================
+// GENERATE AI ASTROLOGY REPORT
+// POST /astrology/horoscope
+// PAYMENT REQUIRED
+// =========================================================
+async function generateAIReport() {
+if (!paid) {
+setAiReport({
+error:
+"Please complete payment first to generate the AI Astrology Report.",
+});
+return;
+}
 
-            message =
-              data.detail ||
-              data.message ||
-              message;
-          } catch {
-            message = text;
-          }
-        }
 
-        throw new Error(message);
-      }
+if (!validateReportForm()) {
+  return;
+}
 
-      if (
-        !contentType.includes(
-          "application/pdf"
-        )
-      ) {
-        const text = await response.text();
+setAiLoading(true);
+setAiReport(null);
 
-        throw new Error(
-          text ||
-            "Server did not return a PDF file."
-        );
-      }
+try {
+  const url = `${API_URL}/astrology/horoscope`;
 
-      const blob =
-        await response.blob();
+  console.log("AI REPORT API:", url);
 
-      const url =
-        window.URL.createObjectURL(
-          blob
-        );
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      birth_date: birthDate,
+      birth_time: birthTime,
+      birth_place: birthPlace,
+    }),
+  });
 
-      const link =
-        document.createElement("a");
+  const text = await response.text();
 
-      link.href = url;
+  console.log("AI REPORT STATUS:", response.status);
+  console.log("AI REPORT RESPONSE:", text);
 
-      link.download =
-        "Horoscope_Report.pdf";
-
-      document.body.appendChild(link);
-
-      link.click();
-
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
-
-      setPdfMessage(
-        "✅ PDF Download Successfully"
-      );
-    } catch (error) {
-      console.error(
-        "PDF Error:",
-        error
-      );
-
-      setPdfError(
-        error.message ||
-          "PDF generation failed"
-      );
-    } finally {
-      setPdfLoading(false);
-    }
+  if (!text.trim()) {
+    throw new Error(
+      `Server returned empty response (${response.status})`
+    );
   }
 
-  return (
-    <div className="max-w-3xl mx-auto p-6">
+  let data;
 
-      {/* =====================================================
-          TITLE
-      ====================================================== */}
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    console.error("Invalid AI report JSON:", text);
 
-      <h1 className="text-3xl font-bold text-center mb-6">
-        🔮 AI Astrology Report
-      </h1>
+    throw new Error(
+      `Server returned invalid JSON (${response.status})`
+    );
+  }
 
-      {/* =====================================================
-          DAILY HOROSCOPE
-      ====================================================== */}
+  if (!response.ok) {
+    throw new Error(
+      data.detail ||
+        data.message ||
+        `AI report generation failed (${response.status})`
+    );
+  }
 
-      <div className="bg-white shadow rounded-xl p-6 mb-6">
+  setAiReport(data);
+} catch (error) {
+  console.error("AI Astrology Report Error:", error);
 
-        <h2 className="text-xl font-semibold mb-4">
-          Daily Horoscope
-        </h2>
+  setAiReport({
+    error:
+      error.message ||
+      "Unable to generate AI Astrology Report.",
+  });
+} finally {
+  setAiLoading(false);
+}
 
-        <select
-          className="border p-3 rounded w-full"
-          value={sign}
-          onChange={(e) =>
-            setSign(e.target.value)
-          }
-        >
-          <option value="">
-            Select Zodiac Sign
-          </option>
 
-          <option value="Aries">
-            Aries ♈
-          </option>
+}
 
-          <option value="Taurus">
-            Taurus ♉
-          </option>
+// =========================================================
+// DOWNLOAD PDF
+// POST /astrology/download-pdf
+// PAYMENT REQUIRED
+// =========================================================
+async function downloadPDF() {
+if (!paid) {
+setPdfError(
+"❌ Please complete payment first."
+);
+return;
+}
 
-          <option value="Gemini">
-            Gemini ♊
-          </option>
 
-          <option value="Cancer">
-            Cancer ♋
-          </option>
+if (!validateReportForm()) {
+  setPdfError(
+    "❌ Please complete all birth details first."
+  );
+  return;
+}
 
-          <option value="Leo">
-            Leo ♌
-          </option>
+try {
+  setPdfLoading(true);
+  setPdfMessage("");
+  setPdfError("");
 
-          <option value="Virgo">
-            Virgo ♍
-          </option>
+  const url = `${API_URL}/astrology/download-pdf`;
 
-          <option value="Libra">
-            Libra ♎
-          </option>
+  console.log("PDF API:", url);
 
-          <option value="Scorpio">
-            Scorpio ♏
-          </option>
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Accept: "application/pdf",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name,
+      email,
+      birth_date: birthDate,
+      birth_time: birthTime,
+      birth_place: birthPlace,
+    }),
+  });
 
-          <option value="Sagittarius">
-            Sagittarius ♐
-          </option>
+  console.log("PDF STATUS:", response.status);
 
-          <option value="Capricorn">
-            Capricorn ♑
-          </option>
+  if (!response.ok) {
+    const text = await response.text();
 
-          <option value="Aquarius">
-            Aquarius ♒
-          </option>
+    let message =
+      `PDF generation failed (${response.status})`;
 
-          <option value="Pisces">
-            Pisces ♓
-          </option>
-        </select>
+    if (text.trim()) {
+      try {
+        const data = JSON.parse(text);
 
-        <button
-          onClick={getHoroscope}
-          disabled={loading}
-          className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-5 py-3 rounded-lg w-full"
-        >
-          {loading
-            ? "Loading..."
-            : "Get Horoscope"}
-        </button>
+        message =
+          data.detail ||
+          data.message ||
+          message;
+      } catch {
+        message = text;
+      }
+    }
 
-        {/* =====================================================
-            HOROSCOPE RESULT
-        ====================================================== */}
+    throw new Error(message);
+  }
 
-        {result && (
-          <div className="mt-6 bg-gray-50 rounded-lg p-5">
+  const contentType =
+    response.headers.get("content-type") || "";
 
-            {result.error ? (
-              <p className="text-red-600 font-medium">
-                ❌ {result.error}
+  if (!contentType.includes("application/pdf")) {
+    const text = await response.text();
+
+    throw new Error(
+      text ||
+        "Server did not return a PDF file."
+    );
+  }
+
+  const blob = await response.blob();
+
+  const objectUrl =
+    window.URL.createObjectURL(blob);
+
+  const link =
+    document.createElement("a");
+
+  link.href = objectUrl;
+  link.download = "AstroAI_Horoscope_Report.pdf";
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  link.remove();
+
+  window.URL.revokeObjectURL(objectUrl);
+
+  setPdfMessage(
+    "✅ Horoscope PDF downloaded successfully."
+  );
+} catch (error) {
+  console.error("PDF Error:", error);
+
+  setPdfError(
+    error.message ||
+      "PDF generation failed."
+  );
+} finally {
+  setPdfLoading(false);
+}
+
+
+}
+
+return ( <div className="max-w-4xl mx-auto p-6">
+
+
+  {/* =====================================================
+      TITLE
+  ====================================================== */}
+
+  <h1 className="text-3xl font-bold text-center mb-8">
+    🔮 AI Astrology Report
+  </h1>
+
+  {/* =====================================================
+      DAILY HOROSCOPE
+  ====================================================== */}
+
+  <div className="bg-white shadow rounded-xl p-6 mb-8">
+
+    <h2 className="text-xl font-semibold mb-4">
+      🆓 Daily Horoscope
+    </h2>
+
+    <p className="text-gray-600 mb-4">
+      Select your zodiac sign to get today's horoscope.
+    </p>
+
+    <select
+      className="border p-3 rounded-lg w-full"
+      value={sign}
+      onChange={(e) => {
+        setSign(e.target.value);
+        setDailyResult(null);
+      }}
+    >
+      <option value="">
+        Select Zodiac Sign
+      </option>
+
+      <option value="Aries">Aries ♈</option>
+      <option value="Taurus">Taurus ♉</option>
+      <option value="Gemini">Gemini ♊</option>
+      <option value="Cancer">Cancer ♋</option>
+      <option value="Leo">Leo ♌</option>
+      <option value="Virgo">Virgo ♍</option>
+      <option value="Libra">Libra ♎</option>
+      <option value="Scorpio">Scorpio ♏</option>
+      <option value="Sagittarius">Sagittarius ♐</option>
+      <option value="Capricorn">Capricorn ♑</option>
+      <option value="Aquarius">Aquarius ♒</option>
+      <option value="Pisces">Pisces ♓</option>
+    </select>
+
+    <button
+      onClick={getDailyHoroscope}
+      disabled={dailyLoading}
+      className="mt-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-lg w-full"
+    >
+      {dailyLoading
+        ? "Loading..."
+        : "Get Daily Horoscope"}
+    </button>
+
+    {/* DAILY RESULT */}
+
+    {dailyResult && (
+      <div className="mt-6 bg-gray-50 rounded-lg p-5">
+
+        {dailyResult.error ? (
+          <p className="text-red-600 font-medium">
+            ❌ {dailyResult.error}
+          </p>
+        ) : (
+          <div className="space-y-5">
+
+            <h3 className="text-2xl font-bold">
+              {dailyResult.sign || sign}
+            </h3>
+
+            {dailyResult.rashi && (
+              <p>
+                <strong>Rashi:</strong>{" "}
+                {dailyResult.rashi}
               </p>
-            ) : (
-              <div className="space-y-5">
+            )}
 
-                {/* SIGN */}
+            {dailyResult.nakshatra && (
+              <p>
+                <strong>Nakshatra:</strong>{" "}
+                {dailyResult.nakshatra}
+              </p>
+            )}
 
-                <h3 className="text-2xl font-bold">
-                  {result.sign || sign}
-                </h3>
+            {dailyResult.prediction && (
+              <div>
+                <h4 className="font-semibold text-lg mb-2">
+                  🔮 Prediction
+                </h4>
 
-                {/* PREDICTION */}
-
-                {result.prediction && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">
-                      🔮 Prediction
-                    </h4>
-
-                    <div className="leading-7">
-                      {renderValue(
-                        result.prediction
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* MESSAGE */}
-
-                {result.message && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">
-                      💬 Message
-                    </h4>
-
-                    <div>
-                      {renderValue(
-                        result.message
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* INSIGHTS */}
-
-                {result.insights && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-3">
-                      ✨ Insights
-                    </h4>
-
-                    <div className="space-y-3">
-                      {Object.entries(
-                        result.insights
-                      ).map(
-                        ([key, value]) => (
-                          <div
-                            key={key}
-                            className="bg-white p-3 rounded-lg shadow-sm"
-                          >
-                            <strong className="capitalize block mb-1">
-                              {key.replace(
-                                /_/g,
-                                " "
-                              )}
-                            </strong>
-
-                            <div className="text-gray-700">
-                              {renderValue(
-                                value
-                              )}
-                            </div>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* OTHER API DATA */}
-
-                {Object.entries(result)
-                  .filter(
-                    ([key]) =>
-                      ![
-                        "sign",
-                        "prediction",
-                        "message",
-                        "insights",
-                        "error",
-                      ].includes(key)
-                  )
-                  .map(
-                    ([key, value]) => (
-                      <div
-                        key={key}
-                        className="bg-white p-3 rounded-lg"
-                      >
-                        <strong className="capitalize block mb-1">
-                          {key.replace(
-                            /_/g,
-                            " "
-                          )}
-                        </strong>
-
-                        <div>
-                          {renderValue(
-                            value
-                          )}
-                        </div>
-                      </div>
-                    )
+                <div className="leading-7">
+                  {renderValue(
+                    dailyResult.prediction
                   )}
-
+                </div>
               </div>
             )}
-          </div>
-        )}
-      </div>
 
-      {/* =====================================================
-          PDF REPORT
-      ====================================================== */}
+            {dailyResult.career && (
+              <div>
+                <h4 className="font-semibold">
+                  💼 Career
+                </h4>
 
-      <div className="bg-white shadow rounded-xl p-6">
+                <p>
+                  {renderValue(
+                    dailyResult.career
+                  )}
+                </p>
+              </div>
+            )}
 
-        <h2 className="text-xl font-semibold mb-4">
-          📄 Horoscope PDF Report
-        </h2>
+            {dailyResult.love && (
+              <div>
+                <h4 className="font-semibold">
+                  ❤️ Love
+                </h4>
 
-        <input
-          className="border p-3 rounded w-full mb-3"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) =>
-            setName(e.target.value)
-          }
-        />
+                <p>
+                  {renderValue(
+                    dailyResult.love
+                  )}
+                </p>
+              </div>
+            )}
 
-        <input
-          type="email"
-          className="border p-3 rounded w-full mb-3"
-          placeholder="Email"
-          value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
-        />
+            {dailyResult.health && (
+              <div>
+                <h4 className="font-semibold">
+                  🧘 Health
+                </h4>
 
-        <input
-          type="date"
-          className="border p-3 rounded w-full mb-3"
-          value={birthDate}
-          onChange={(e) =>
-            setBirthDate(e.target.value)
-          }
-        />
+                <p>
+                  {renderValue(
+                    dailyResult.health
+                  )}
+                </p>
+              </div>
+            )}
 
-        <input
-          type="time"
-          className="border p-3 rounded w-full mb-3"
-          value={birthTime}
-          onChange={(e) =>
-            setBirthTime(e.target.value)
-          }
-        />
+            {dailyResult.finance && (
+              <div>
+                <h4 className="font-semibold">
+                  💰 Finance
+                </h4>
 
-        <input
-          className="border p-3 rounded w-full mb-4"
-          placeholder="Birth Place"
-          value={birthPlace}
-          onChange={(e) =>
-            setBirthPlace(e.target.value)
-          }
-        />
+                <p>
+                  {renderValue(
+                    dailyResult.finance
+                  )}
+                </p>
+              </div>
+            )}
 
-        {/* PAYMENT */}
+            {dailyResult.lucky_number && (
+              <p>
+                <strong>Lucky Number:</strong>{" "}
+                {dailyResult.lucky_number}
+              </p>
+            )}
 
-        <PaymentButton
-          email={email}
-          reportType="horoscope"
-          onSuccess={() => {
-            setPaid(true);
-            setPdfError("");
+            {dailyResult.lucky_color && (
+              <p>
+                <strong>Lucky Color:</strong>{" "}
+                {dailyResult.lucky_color}
+              </p>
+            )}
 
-            setPdfMessage(
-              "✅ Payment successful. PDF is now unlocked."
-            );
-          }}
-        />
+            {dailyResult.lucky_day && (
+              <p>
+                <strong>Lucky Day:</strong>{" "}
+                {dailyResult.lucky_day}
+              </p>
+            )}
 
-        {/* PAYMENT STATUS */}
+            {dailyResult.lucky_mantra && (
+              <p>
+                <strong>Mantra:</strong>{" "}
+                {dailyResult.lucky_mantra}
+              </p>
+            )}
 
-        {paid && (
-          <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
-            ✅ Horoscope Report Paid
-          </div>
-        )}
+            {dailyResult.remedy && (
+              <p>
+                <strong>Remedy:</strong>{" "}
+                {dailyResult.remedy}
+              </p>
+            )}
 
-        {/* PDF BUTTON */}
-
-        <button
-          onClick={downloadPDF}
-          disabled={
-            pdfLoading || !paid
-          }
-          className={`mt-4 px-6 py-3 rounded-lg w-full text-white ${
-            paid
-              ? "bg-green-600 hover:bg-green-700"
-              : "bg-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {pdfLoading
-            ? "Generating PDF..."
-            : "Download PDF"}
-        </button>
-
-        {/* SUCCESS */}
-
-        {pdfMessage && (
-          <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
-            {pdfMessage}
-          </div>
-        )}
-
-        {/* ERROR */}
-
-        {pdfError && (
-          <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg">
-            {pdfError}
           </div>
         )}
 
       </div>
-    </div>
-  );
+    )}
+
+  </div>
+
+  {/* =====================================================
+      AI ASTROLOGY REPORT
+  ====================================================== */}
+
+  <div className="bg-white shadow rounded-xl p-6 mb-8">
+
+    <h2 className="text-xl font-semibold mb-2">
+      🔮 AI Astrology Report
+    </h2>
+
+    <p className="text-gray-600 mb-5">
+      Enter your birth details and purchase the report
+      to generate your personalized AI Astrology Report.
+    </p>
+
+    {/* NAME */}
+
+    <input
+      className="border p-3 rounded-lg w-full mb-3"
+      placeholder="Your Name"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+    />
+
+    {/* EMAIL */}
+
+    <input
+      type="email"
+      className="border p-3 rounded-lg w-full mb-3"
+      placeholder="Email"
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+    />
+
+    {/* BIRTH DATE */}
+
+    <input
+      type="date"
+      className="border p-3 rounded-lg w-full mb-3"
+      value={birthDate}
+      onChange={(e) => setBirthDate(e.target.value)}
+    />
+
+    {/* BIRTH TIME */}
+
+    <input
+      type="time"
+      className="border p-3 rounded-lg w-full mb-3"
+      value={birthTime}
+      onChange={(e) => setBirthTime(e.target.value)}
+    />
+
+    {/* BIRTH PLACE */}
+
+    <input
+      className="border p-3 rounded-lg w-full mb-5"
+      placeholder="Birth Place"
+      value={birthPlace}
+      onChange={(e) => setBirthPlace(e.target.value)}
+    />
+
+    {/* =================================================
+        PAYMENT
+    ================================================== */}
+
+    <PaymentButton
+      email={email}
+      reportType="horoscope"
+      amountText="₹499"
+      onSuccess={() => {
+        setPaid(true);
+        setPdfError("");
+
+        setPdfMessage(
+          "✅ Payment successful. AI Astrology Report and PDF are now unlocked."
+        );
+      }}
+    />
+
+    {/* PAYMENT STATUS */}
+
+    {paid && (
+      <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-lg">
+        ✅ Horoscope Report Payment Successful
+      </div>
+    )}
+
+    {/* =================================================
+        GENERATE AI REPORT
+    ================================================== */}
+
+    <button
+      onClick={generateAIReport}
+      disabled={aiLoading || !paid}
+      className={`mt-5 px-6 py-3 rounded-lg w-full text-white ${
+        paid
+          ? "bg-purple-600 hover:bg-purple-700"
+          : "bg-gray-400 cursor-not-allowed"
+      }`}
+    >
+      {aiLoading
+        ? "Generating AI Astrology Report..."
+        : "🔮 Generate AI Astrology Report"}
+    </button>
+
+    {/* AI REPORT ERROR */}
+
+    {aiReport?.error && (
+      <div className="mt-5 p-4 bg-red-50 text-red-600 rounded-lg">
+        ❌ {aiReport.error}
+      </div>
+    )}
+
+    {/* AI REPORT RESULT */}
+
+    {aiReport && !aiReport.error && (
+      <div className="mt-6 bg-gray-50 rounded-xl p-5">
+
+        <h3 className="text-2xl font-bold mb-5">
+          🔮 Your AI Astrology Report
+        </h3>
+
+        {Object.entries(aiReport).map(
+          ([key, value]) => (
+            <div
+              key={key}
+              className="bg-white rounded-lg p-4 mb-4 shadow-sm"
+            >
+              <h4 className="font-bold capitalize mb-2">
+                {key.replace(/_/g, " ")}
+              </h4>
+
+              <div className="text-gray-700 leading-7">
+                {renderValue(value)}
+              </div>
+            </div>
+          )
+        )}
+
+      </div>
+    )}
+
+  </div>
+
+  {/* =====================================================
+      PDF REPORT
+  ====================================================== */}
+
+  <div className="bg-white shadow rounded-xl p-6">
+
+    <h2 className="text-xl font-semibold mb-2">
+      📄 Horoscope PDF Report
+    </h2>
+
+    <p className="text-gray-600 mb-5">
+      After successful payment, download your complete
+      AstroAI Horoscope PDF report.
+    </p>
+
+    <button
+      onClick={downloadPDF}
+      disabled={pdfLoading || !paid}
+      className={`px-6 py-3 rounded-lg w-full text-white ${
+        paid
+          ? "bg-green-600 hover:bg-green-700"
+          : "bg-gray-400 cursor-not-allowed"
+      }`}
+    >
+      {pdfLoading
+        ? "Generating PDF..."
+        : "📄 Download Horoscope PDF"}
+    </button>
+
+    {pdfMessage && (
+      <div className="mt-4 p-4 bg-green-50 text-green-700 rounded-lg">
+        {pdfMessage}
+      </div>
+    )}
+
+    {pdfError && (
+      <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg">
+        ❌ {pdfError}
+      </div>
+    )}
+
+  </div>
+
+</div>
+
+
+);
 }
-
