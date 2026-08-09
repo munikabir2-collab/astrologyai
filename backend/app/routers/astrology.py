@@ -31,13 +31,16 @@ router = APIRouter(
 
 
 
+
 @router.post("/horoscope")
 def horoscope(
     data: HoroscopeRequest,
     db: Session = Depends(get_db),
 ):
+    # ==========================================================
+    # 1. PAYMENT CHECK
+    # ==========================================================
 
-    # Payment Check
     if not has_access(
         db=db,
         email=data.email,
@@ -48,11 +51,64 @@ def horoscope(
             detail="Please purchase Horoscope Report.",
         )
 
+    # ==========================================================
+    # 2. VALIDATE INPUT
+    # ==========================================================
+
+    if not data.name or not data.name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Name is required.",
+        )
+
+    if not data.email or not data.email.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Email is required.",
+        )
+
+    if not data.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Birth date is required.",
+        )
+
+    if not data.birth_time:
+        raise HTTPException(
+            status_code=400,
+            detail="Birth time is required.",
+        )
+
+    if not data.birth_place or not data.birth_place.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Birth place is required.",
+        )
+
+    # ==========================================================
+    # 3. GENERATE ASTROLOGY REPORT
+    # ==========================================================
+
     try:
-        location = get_coordinates(data.birth_place)
+        # ------------------------------------------------------
+        # Get coordinates from birth place
+        # ------------------------------------------------------
+
+        location = get_coordinates(
+            data.birth_place.strip()
+        )
+
+        if not location:
+            raise ValueError(
+                "Unable to find birth place coordinates."
+            )
 
         latitude = location["latitude"]
         longitude = location["longitude"]
+
+        # ------------------------------------------------------
+        # Birth Chart
+        # ------------------------------------------------------
 
         chart = calculate_chart(
             birth_date=data.birth_date,
@@ -61,12 +117,20 @@ def horoscope(
             longitude=longitude,
         )
 
+        # ------------------------------------------------------
+        # Panchang
+        # ------------------------------------------------------
+
         panchang = get_panchang(
             data.birth_date,
             data.birth_time,
             latitude,
             longitude,
         )
+
+        # ------------------------------------------------------
+        # Vimshottari Dasha
+        # ------------------------------------------------------
 
         dasha = get_vimshottari_dasha(
             data.birth_date,
@@ -75,35 +139,66 @@ def horoscope(
             longitude,
         )
 
+        # ------------------------------------------------------
+        # Gemini / AI Astrology Report
+        # ------------------------------------------------------
+
         report = generate_astrology_report(
             chart,
             panchang,
             dasha,
         )
 
+        # ======================================================
+        # 4. RESPONSE
+        # ======================================================
+
         return {
             "success": True,
+
             "name": data.name,
+
+            "email": data.email,
+
             "birth_details": {
                 "date": data.birth_date,
                 "time": data.birth_time,
                 "place": data.birth_place,
             },
+
             "location": {
                 "latitude": latitude,
                 "longitude": longitude,
             },
+
             "chart": chart,
+
             "panchang": panchang,
+
             "dasha": dasha,
+
             "gemini_report": report,
         }
 
+    # ==========================================================
+    # 5. ERROR HANDLING
+    # ==========================================================
+
+    except HTTPException:
+        raise
+
     except Exception as e:
+        print(
+            "HOROSCOPE REPORT ERROR:",
+            repr(e),
+        )
+
         raise HTTPException(
             status_code=500,
             detail=str(e),
         )
+
+
 @router.get("/prediction")
 def prediction(sign: str):
 
