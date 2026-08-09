@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import PaymentButton from "../components/PaymentButton";
 
@@ -10,7 +11,51 @@ const API_URL =
   "https://astrologyai-s2y5.onrender.com";
 
 // ============================================================
-// Convert objects / arrays into readable React content
+// SAFE API RESPONSE READER
+// ============================================================
+
+async function readApiResponse(response) {
+  const contentType =
+    response.headers.get("content-type") || "";
+
+  const text = await response.text();
+
+  console.log("====================================");
+  console.log("API STATUS:", response.status);
+  console.log("API CONTENT TYPE:", contentType);
+  console.log("API RESPONSE:", text);
+  console.log("====================================");
+
+  if (!text || !text.trim()) {
+    throw new Error(
+      `Server returned an empty response (${response.status}).`
+    );
+  }
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch (error) {
+    console.error("JSON PARSE ERROR:", error);
+    throw new Error(
+      `Server returned invalid JSON (${response.status}).`
+    );
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.detail ||
+        data?.message ||
+        `API request failed (${response.status})`
+    );
+  }
+
+  return data;
+}
+
+// ============================================================
+// RENDER OBJECT / ARRAY
 // ============================================================
 
 function renderValue(value) {
@@ -30,9 +75,7 @@ function renderValue(value) {
     return (
       <ul className="list-disc ml-5 space-y-1">
         {value.map((item, index) => (
-          <li key={index}>
-            {renderValue(item)}
-          </li>
+          <li key={index}>{renderValue(item)}</li>
         ))}
       </ul>
     );
@@ -60,50 +103,7 @@ function renderValue(value) {
 }
 
 // ============================================================
-// Safely read API response
-// ============================================================
-
-async function readApiResponse(response) {
-  const text = await response.text();
-
-  console.log("API STATUS:", response.status);
-  console.log("API CONTENT TYPE:", response.headers.get("content-type"));
-  console.log("API RESPONSE:", text);
-
-  // Empty response
-  if (!text || !text.trim()) {
-    throw new Error(
-      `Server returned an empty response (${response.status}).`
-    );
-  }
-
-  let data;
-
-  try {
-    data = JSON.parse(text);
-  } catch (error) {
-    console.error("JSON PARSE ERROR:", error);
-    console.error("RAW RESPONSE:", text);
-
-    throw new Error(
-      `Server returned invalid JSON (${response.status}).`
-    );
-  }
-
-  // HTTP error
-  if (!response.ok) {
-    throw new Error(
-      data?.detail ||
-        data?.message ||
-        `API request failed (${response.status})`
-    );
-  }
-
-  return data;
-}
-
-// ============================================================
-// Horoscope Component
+// HOROSCOPE PAGE
 // ============================================================
 
 export default function Horoscope() {
@@ -112,51 +112,59 @@ export default function Horoscope() {
   // ==========================================================
 
   const [sign, setSign] = useState("");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [dailyResult, setDailyResult] = useState(null);
+  const [dailyLoading, setDailyLoading] = useState(false);
 
   // ==========================================================
-  // PDF REPORT
+  // AI ASTROLOGY REPORT
   // ==========================================================
 
-  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
+
+  const [aiResult, setAiResult] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // ==========================================================
+  // PAYMENT
+  // ==========================================================
+
+  const [paid, setPaid] = useState(false);
+
+  // ==========================================================
+  // PDF
+  // ==========================================================
 
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfMessage, setPdfMessage] = useState("");
   const [pdfError, setPdfError] = useState("");
 
-  // Payment status
-  const [paid, setPaid] = useState(false);
-
   // ==========================================================
-  // GET DAILY HOROSCOPE
+  // DAILY HOROSCOPE
+  // GET /astrology/prediction
   // ==========================================================
 
-  async function getHoroscope() {
+  async function getDailyHoroscope() {
     if (!sign) {
-      setResult({
+      setDailyResult({
         error: "Please select your zodiac sign.",
       });
-
       return;
     }
 
-    setLoading(true);
-    setResult(null);
+    setDailyLoading(true);
+    setDailyResult(null);
 
     try {
       const url =
-        `${API_URL}/astrology/prediction?sign=${encodeURIComponent(sign)}`;
+        `${API_URL}/astrology/prediction?sign=${encodeURIComponent(
+          sign
+        )}`;
 
-      console.log("====================================");
-      console.log("HOROSCOPE API");
-      console.log("URL:", url);
-      console.log("SIGN:", sign);
-      console.log("====================================");
+      console.log("DAILY HOROSCOPE URL:", url);
 
       const response = await fetch(url, {
         method: "GET",
@@ -167,65 +175,190 @@ export default function Horoscope() {
 
       const data = await readApiResponse(response);
 
-      console.log("HOROSCOPE DATA:", data);
-
-      setResult(data);
+      setDailyResult(data);
     } catch (error) {
-      console.error("HOROSCOPE ERROR:", error);
+      console.error("DAILY HOROSCOPE ERROR:", error);
 
-      setResult({
+      setDailyResult({
         error:
           error?.message ||
           "Unable to connect to AstroAI API.",
       });
     } finally {
-      setLoading(false);
+      setDailyLoading(false);
+    }
+  }
+
+  // ==========================================================
+  // AI ASTROLOGY REPORT
+  // POST /astrology/horoscope
+  // ==========================================================
+
+  async function generateAIReport() {
+    setPdfError("");
+    setPdfMessage("");
+    setAiResult(null);
+
+    // --------------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------------
+
+    if (!name.trim()) {
+      setAiResult({
+        error: "Please enter your name.",
+      });
+      return;
+    }
+
+    if (!email.trim()) {
+      setAiResult({
+        error: "Please enter your email.",
+      });
+      return;
+    }
+
+    if (!birthDate) {
+      setAiResult({
+        error: "Please select your birth date.",
+      });
+      return;
+    }
+
+    if (!birthTime) {
+      setAiResult({
+        error: "Please select your birth time.",
+      });
+      return;
+    }
+
+    if (!birthPlace.trim()) {
+      setAiResult({
+        error: "Please enter your birth place.",
+      });
+      return;
+    }
+
+    // --------------------------------------------------------
+    // PAYMENT CHECK
+    // --------------------------------------------------------
+
+    if (!paid) {
+      setAiResult({
+        error:
+          "Please complete Horoscope Report payment first.",
+      });
+      return;
+    }
+
+    setAiLoading(true);
+
+    try {
+      const url =
+        `${API_URL}/astrology/horoscope`;
+
+      console.log("====================================");
+      console.log("AI ASTROLOGY REPORT");
+      console.log("URL:", url);
+      console.log("EMAIL:", email);
+      console.log("====================================");
+
+      const response = await fetch(url, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          birth_date: birthDate,
+          birth_time: birthTime,
+          birth_place: birthPlace.trim(),
+        }),
+      });
+
+      const data = await readApiResponse(response);
+
+      console.log("AI ASTROLOGY DATA:", data);
+
+      setAiResult(data);
+    } catch (error) {
+      console.error("AI ASTROLOGY ERROR:", error);
+
+      setAiResult({
+        error:
+          error?.message ||
+          "Unable to generate AI Astrology Report.",
+      });
+    } finally {
+      setAiLoading(false);
     }
   }
 
   // ==========================================================
   // DOWNLOAD PDF
+  // POST /astrology/download-pdf
   // ==========================================================
 
   async function downloadPDF() {
     setPdfMessage("");
     setPdfError("");
 
-    // Payment check
+    // --------------------------------------------------------
+    // PAYMENT
+    // --------------------------------------------------------
+
     if (!paid) {
       setPdfError(
         "❌ Please complete payment first."
       );
-
       return;
     }
 
-    // Email check
+    // --------------------------------------------------------
+    // VALIDATION
+    // --------------------------------------------------------
+
     if (!email.trim()) {
       setPdfError(
         "❌ Please enter your email."
       );
-
       return;
     }
 
-    // Birth details check
-    if (
-      !name.trim() ||
-      !birthDate ||
-      !birthTime ||
-      !birthPlace.trim()
-    ) {
+    if (!name.trim()) {
       setPdfError(
-        "❌ Please enter name, birth date, birth time and birth place."
+        "❌ Please enter your name."
       );
-
       return;
     }
+
+    if (!birthDate) {
+      setPdfError(
+        "❌ Please select your birth date."
+      );
+      return;
+    }
+
+    if (!birthTime) {
+      setPdfError(
+        "❌ Please select your birth time."
+      );
+      return;
+    }
+
+    if (!birthPlace.trim()) {
+      setPdfError(
+        "❌ Please enter your birth place."
+      );
+      return;
+    }
+
+    setPdfLoading(true);
 
     try {
-      setPdfLoading(true);
-
       const url =
         `${API_URL}/astrology/download-pdf`;
 
@@ -239,7 +372,8 @@ export default function Horoscope() {
 
         headers: {
           "Content-Type": "application/json",
-          Accept: "application/pdf, application/json",
+          Accept:
+            "application/pdf, application/json",
         },
 
         body: JSON.stringify({
@@ -264,9 +398,9 @@ export default function Horoscope() {
         contentType
       );
 
-      // ======================================================
-      // ERROR RESPONSE
-      // ======================================================
+      // ------------------------------------------------------
+      // ERROR
+      // ------------------------------------------------------
 
       if (!response.ok) {
         const text = await response.text();
@@ -295,14 +429,14 @@ export default function Horoscope() {
         throw new Error(message);
       }
 
-      // ======================================================
-      // CHECK PDF CONTENT TYPE
-      // ======================================================
+      // ------------------------------------------------------
+      // PDF CHECK
+      // ------------------------------------------------------
 
       if (
-        !contentType.toLowerCase().includes(
-          "application/pdf"
-        )
+        !contentType
+          .toLowerCase()
+          .includes("application/pdf")
       ) {
         const text = await response.text();
 
@@ -317,9 +451,9 @@ export default function Horoscope() {
         );
       }
 
-      // ======================================================
-      // GET PDF BLOB
-      // ======================================================
+      // ------------------------------------------------------
+      // BLOB
+      // ------------------------------------------------------
 
       const blob =
         await response.blob();
@@ -330,9 +464,9 @@ export default function Horoscope() {
         );
       }
 
-      // ======================================================
-      // CREATE DOWNLOAD
-      // ======================================================
+      // ------------------------------------------------------
+      // DOWNLOAD
+      // ------------------------------------------------------
 
       const downloadUrl =
         window.URL.createObjectURL(blob);
@@ -378,32 +512,33 @@ export default function Horoscope() {
   // ==========================================================
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-6">
 
-      {/* =====================================================
+      {/* ======================================================
           TITLE
-      ====================================================== */}
+      ======================================================= */}
 
-      <h1 className="text-3xl font-bold text-center mb-6">
+      <h1 className="text-3xl font-bold text-center mb-8">
         🔮 AI Astrology Report
       </h1>
 
-      {/* =====================================================
+      {/* ======================================================
           DAILY HOROSCOPE
-      ====================================================== */}
+      ======================================================= */}
 
-      <div className="bg-white shadow rounded-xl p-6 mb-6">
+      <div className="bg-white shadow rounded-xl p-6 mb-8">
 
         <h2 className="text-xl font-semibold mb-4">
-          Daily Horoscope
+          🌞 Daily Horoscope
         </h2>
 
         <select
-          className="border p-3 rounded w-full"
+          className="border p-3 rounded-lg w-full"
           value={sign}
-          onChange={(e) =>
-            setSign(e.target.value)
-          }
+          onChange={(e) => {
+            setSign(e.target.value);
+            setDailyResult(null);
+          }}
         >
           <option value="">
             Select Zodiac Sign
@@ -459,423 +594,434 @@ export default function Horoscope() {
         </select>
 
         <button
-          onClick={getHoroscope}
-          disabled={loading}
+          onClick={getDailyHoroscope}
+          disabled={dailyLoading}
           className="mt-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-5 py-3 rounded-lg w-full"
         >
-          {loading
+          {dailyLoading
             ? "Loading..."
             : "Get Horoscope"}
         </button>
 
-        {/* ===================================================
-            HOROSCOPE RESULT
-        ==================================================== */}
+        {/* DAILY RESULT */}
 
-        {result && (
+        {dailyResult && (
           <div className="mt-6 bg-gray-50 rounded-lg p-5">
 
-            {/* ERROR */}
-
-            {result.error ? (
+            {dailyResult.error ? (
               <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
-                ❌ {result.error}
+                ❌ {dailyResult.error}
               </div>
             ) : (
-              <div className="space-y-5">
-
-                {/* SIGN */}
+              <div className="space-y-4">
 
                 <h3 className="text-2xl font-bold">
-                  {result.sign || sign}
+                  {dailyResult.sign || sign}
                 </h3>
 
-                {/* RASHI */}
-
-                {result.rashi && (
+                {dailyResult.rashi && (
                   <div>
-                    <h4 className="font-semibold text-lg">
-                      🪐 Rashi
-                    </h4>
-
-                    <p>
-                      {renderValue(
-                        result.rashi
-                      )}
-                    </p>
+                    <strong>🪐 Rashi:</strong>{" "}
+                    {renderValue(
+                      dailyResult.rashi
+                    )}
                   </div>
                 )}
 
-                {/* NAKSHATRA */}
-
-                {result.nakshatra && (
+                {dailyResult.nakshatra && (
                   <div>
-                    <h4 className="font-semibold text-lg">
-                      ⭐ Nakshatra
-                    </h4>
-
-                    <p>
-                      {renderValue(
-                        result.nakshatra
-                      )}
-                    </p>
+                    <strong>⭐ Nakshatra:</strong>{" "}
+                    {renderValue(
+                      dailyResult.nakshatra
+                    )}
                   </div>
                 )}
 
-                {/* PREDICTION */}
-
-                {result.prediction && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">
+                {dailyResult.prediction && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
                       🔮 Prediction
                     </h4>
 
-                    <div className="leading-7">
-                      {renderValue(
-                        result.prediction
-                      )}
-                    </div>
+                    {renderValue(
+                      dailyResult.prediction
+                    )}
                   </div>
                 )}
 
-                {/* CAREER */}
-
-                {result.career && (
+                {dailyResult.career && (
                   <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="font-semibold">
                       💼 Career
                     </h4>
 
-                    <div className="mt-1">
+                    <p className="mt-1">
                       {renderValue(
-                        result.career
+                        dailyResult.career
                       )}
-                    </div>
+                    </p>
                   </div>
                 )}
 
-                {/* LOVE */}
-
-                {result.love && (
+                {dailyResult.love && (
                   <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="font-semibold">
                       ❤️ Love
                     </h4>
 
-                    <div className="mt-1">
+                    <p className="mt-1">
                       {renderValue(
-                        result.love
+                        dailyResult.love
                       )}
-                    </div>
+                    </p>
                   </div>
                 )}
 
-                {/* HEALTH */}
-
-                {result.health && (
+                {dailyResult.health && (
                   <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="font-semibold">
                       ❤️‍🩹 Health
                     </h4>
 
-                    <div className="mt-1">
+                    <p className="mt-1">
                       {renderValue(
-                        result.health
+                        dailyResult.health
                       )}
-                    </div>
+                    </p>
                   </div>
                 )}
 
-                {/* FINANCE */}
-
-                {result.finance && (
+                {dailyResult.finance && (
                   <div className="bg-white p-4 rounded-lg shadow-sm">
                     <h4 className="font-semibold">
                       💰 Finance
                     </h4>
 
-                    <div className="mt-1">
+                    <p className="mt-1">
                       {renderValue(
-                        result.finance
+                        dailyResult.finance
                       )}
-                    </div>
+                    </p>
                   </div>
                 )}
 
-                {/* LUCKY NUMBER */}
-
-                {result.lucky_number && (
+                {dailyResult.lucky_number && (
                   <div>
                     <strong>
                       🔢 Lucky Number:
                     </strong>{" "}
                     {renderValue(
-                      result.lucky_number
+                      dailyResult.lucky_number
                     )}
                   </div>
                 )}
 
-                {/* LUCKY COLOR */}
-
-                {result.lucky_color && (
+                {dailyResult.lucky_color && (
                   <div>
                     <strong>
                       🎨 Lucky Color:
                     </strong>{" "}
                     {renderValue(
-                      result.lucky_color
+                      dailyResult.lucky_color
                     )}
                   </div>
                 )}
 
-                {/* LUCKY DAY */}
-
-                {result.lucky_day && (
+                {dailyResult.lucky_day && (
                   <div>
                     <strong>
                       📅 Lucky Day:
                     </strong>{" "}
                     {renderValue(
-                      result.lucky_day
+                      dailyResult.lucky_day
                     )}
                   </div>
                 )}
 
-                {/* MANTRA */}
-
-                {result.lucky_mantra && (
+                {dailyResult.lucky_mantra && (
                   <div>
                     <strong>
                       🕉️ Lucky Mantra:
                     </strong>{" "}
                     {renderValue(
-                      result.lucky_mantra
+                      dailyResult.lucky_mantra
                     )}
                   </div>
                 )}
 
-                {/* REMEDY */}
-
-                {result.remedy && (
+                {dailyResult.remedy && (
                   <div>
                     <strong>
                       🙏 Remedy:
                     </strong>{" "}
                     {renderValue(
-                      result.remedy
+                      dailyResult.remedy
                     )}
                   </div>
                 )}
-
-                {/* MESSAGE */}
-
-                {result.message && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-2">
-                      💬 Message
-                    </h4>
-
-                    <div>
-                      {renderValue(
-                        result.message
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* INSIGHTS */}
-
-                {result.insights && (
-                  <div>
-                    <h4 className="font-semibold text-lg mb-3">
-                      ✨ Insights
-                    </h4>
-
-                    <div className="space-y-3">
-
-                      {Object.entries(
-                        result.insights
-                      ).map(
-                        ([key, value]) => (
-                          <div
-                            key={key}
-                            className="bg-white p-3 rounded-lg shadow-sm"
-                          >
-                            <strong className="capitalize block mb-1">
-                              {key.replace(
-                                /_/g,
-                                " "
-                              )}
-                            </strong>
-
-                            <div className="text-gray-700">
-                              {renderValue(
-                                value
-                              )}
-                            </div>
-                          </div>
-                        )
-                      )}
-
-                    </div>
-                  </div>
-                )}
-
-                {/* OTHER API DATA */}
-
-                {Object.entries(result)
-                  .filter(
-                    ([key]) =>
-                      ![
-                        "sign",
-                        "rashi",
-                        "nakshatra",
-                        "prediction",
-                        "career",
-                        "love",
-                        "health",
-                        "finance",
-                        "lucky_number",
-                        "lucky_color",
-                        "lucky_day",
-                        "lucky_mantra",
-                        "remedy",
-                        "message",
-                        "insights",
-                        "error",
-                      ].includes(key)
-                  )
-                  .map(
-                    ([key, value]) => (
-                      <div
-                        key={key}
-                        className="bg-white p-3 rounded-lg"
-                      >
-                        <strong className="capitalize block mb-1">
-                          {key.replace(
-                            /_/g,
-                            " "
-                          )}
-                        </strong>
-
-                        <div>
-                          {renderValue(
-                            value
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-
               </div>
             )}
-
           </div>
         )}
-
       </div>
 
-      {/* =====================================================
-          PDF REPORT
-      ====================================================== */}
+      {/* ======================================================
+          AI ASTROLOGY REPORT
+      ======================================================= */}
 
-      <div className="bg-white shadow rounded-xl p-6">
+      <div className="bg-white shadow rounded-xl p-6 mb-8">
 
-        <h2 className="text-xl font-semibold mb-4">
-          📄 Horoscope PDF Report
+        <h2 className="text-xl font-semibold mb-5">
+          🤖 AI Astrology Report
         </h2>
 
-        {/* NAME */}
+        <div className="space-y-3">
 
-        <input
-          className="border p-3 rounded w-full mb-3"
-          placeholder="Your Name"
-          value={name}
-          onChange={(e) =>
-            setName(e.target.value)
-          }
-        />
+          {/* NAME */}
 
-        {/* EMAIL */}
+          <input
+            className="border p-3 rounded-lg w-full"
+            placeholder="Your Name"
+            value={name}
+            onChange={(e) =>
+              setName(e.target.value)
+            }
+          />
 
-        <input
-          type="email"
-          className="border p-3 rounded w-full mb-3"
-          placeholder="Email"
-          value={email}
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
-        />
+          {/* EMAIL */}
 
-        {/* BIRTH DATE */}
+          <input
+            type="email"
+            className="border p-3 rounded-lg w-full"
+            placeholder="Email Address"
+            value={email}
+            onChange={(e) =>
+              setEmail(e.target.value)
+            }
+          />
 
-        <input
-          type="date"
-          className="border p-3 rounded w-full mb-3"
-          value={birthDate}
-          onChange={(e) =>
-            setBirthDate(e.target.value)
-          }
-        />
+          {/* DATE */}
 
-        {/* BIRTH TIME */}
+          <input
+            type="date"
+            className="border p-3 rounded-lg w-full"
+            value={birthDate}
+            onChange={(e) =>
+              setBirthDate(e.target.value)
+            }
+          />
 
-        <input
-          type="time"
-          className="border p-3 rounded w-full mb-3"
-          value={birthTime}
-          onChange={(e) =>
-            setBirthTime(e.target.value)
-          }
-        />
+          {/* TIME */}
 
-        {/* BIRTH PLACE */}
+          <input
+            type="time"
+            className="border p-3 rounded-lg w-full"
+            value={birthTime}
+            onChange={(e) =>
+              setBirthTime(e.target.value)
+            }
+          />
 
-        <input
-          className="border p-3 rounded w-full mb-4"
-          placeholder="Birth Place"
-          value={birthPlace}
-          onChange={(e) =>
-            setBirthPlace(e.target.value)
-          }
-        />
+          {/* PLACE */}
 
-        {/* =================================================
+          <input
+            className="border p-3 rounded-lg w-full"
+            placeholder="Birth Place"
+            value={birthPlace}
+            onChange={(e) =>
+              setBirthPlace(e.target.value)
+            }
+          />
+        </div>
+
+        {/* ====================================================
             PAYMENT
-        ================================================== */}
+        ===================================================== */}
 
-        <PaymentButton
-          email={email}
-          reportType="horoscope"
-          onSuccess={() => {
-            setPaid(true);
-            setPdfError("");
+        <div className="mt-5">
 
-            setPdfMessage(
-              "✅ Payment successful. PDF is now unlocked."
-            );
-          }}
-        />
+          <PaymentButton
+            email={email}
+            reportType="horoscope"
+            onSuccess={() => {
+              setPaid(true);
+              setPdfError("");
+              setPdfMessage(
+                "✅ Payment successful."
+              );
+            }}
+          />
+
+        </div>
 
         {/* PAYMENT STATUS */}
 
         {paid && (
           <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
-            ✅ Horoscope Report Paid
+            ✅ Horoscope Report Payment Successful
           </div>
         )}
 
-        {/* =================================================
-            PDF BUTTON
-        ================================================== */}
+        {/* ====================================================
+            GENERATE AI REPORT
+        ===================================================== */}
+
+        <button
+          onClick={generateAIReport}
+          disabled={aiLoading || !paid}
+          className={`mt-5 px-6 py-3 rounded-lg w-full text-white ${
+            paid
+              ? "bg-purple-600 hover:bg-purple-700"
+              : "bg-gray-400 cursor-not-allowed"
+          }`}
+        >
+          {aiLoading
+            ? "Generating AI Report..."
+            : "Generate AI Astrology Report"}
+        </button>
+
+        {/* ====================================================
+            AI RESULT
+        ===================================================== */}
+
+        {aiResult && (
+          <div className="mt-6 bg-gray-50 rounded-xl p-5">
+
+            {aiResult.error ? (
+              <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg">
+                ❌ {aiResult.error}
+              </div>
+            ) : (
+              <div className="space-y-5">
+
+                <h3 className="text-2xl font-bold">
+                  🌌 Astrology Report
+                </h3>
+
+                {aiResult.name && (
+                  <p>
+                    <strong>Name:</strong>{" "}
+                    {aiResult.name}
+                  </p>
+                )}
+
+                {aiResult.birth_details && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
+                      👤 Birth Details
+                    </h4>
+
+                    {renderValue(
+                      aiResult.birth_details
+                    )}
+                  </div>
+                )}
+
+                {aiResult.location && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
+                      📍 Location
+                    </h4>
+
+                    {renderValue(
+                      aiResult.location
+                    )}
+                  </div>
+                )}
+
+                {aiResult.chart && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
+                      🌌 Birth Chart
+                    </h4>
+
+                    {renderValue(
+                      aiResult.chart
+                    )}
+                  </div>
+                )}
+
+                {aiResult.panchang && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
+                      🕉️ Panchang
+                    </h4>
+
+                    {renderValue(
+                      aiResult.panchang
+                    )}
+                  </div>
+                )}
+
+                {aiResult.dasha && (
+                  <div className="bg-white p-4 rounded-lg shadow-sm">
+                    <h4 className="font-semibold mb-2">
+                      🔱 Dasha
+                    </h4>
+
+                    {renderValue(
+                      aiResult.dasha
+                    )}
+                  </div>
+                )}
+
+                {aiResult.gemini_report && (
+                  <div className="bg-purple-50 border border-purple-200 p-5 rounded-xl">
+
+                    <h4 className="text-xl font-bold mb-3">
+                      🤖 Gemini AI Report
+                    </h4>
+
+                    <div className="leading-7">
+                      {renderValue(
+                        aiResult.gemini_report
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* OTHER DATA */}
+
+                {Object.entries(aiResult)
+                  .filter(
+                    ([key]) =>
+                      ![
+                        "success",
+                        "name",
+                        "birth_details",
+                        "location",
+                        "chart",
+                        "panchang",
+                        "dasha",
+                        "gemini_report",
+                        "error",
+                      ].includes(key)
+                  )
+                  .map(([key, value]) => (
+                    <div
+                      key={key}
+                      className="bg-white p-4 rounded-lg"
+                    >
+                      <strong className="capitalize block mb-2">
+                        {key.replace(/_/g, " ")}
+                      </strong>
+
+                      {renderValue(value)}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ====================================================
+            PDF
+        ===================================================== */}
 
         <button
           onClick={downloadPDF}
-          disabled={
-            pdfLoading || !paid
-          }
-          className={`mt-4 px-6 py-3 rounded-lg w-full text-white ${
+          disabled={pdfLoading || !paid}
+          className={`mt-5 px-6 py-3 rounded-lg w-full text-white ${
             paid
               ? "bg-green-600 hover:bg-green-700"
               : "bg-gray-400 cursor-not-allowed"
@@ -883,10 +1029,10 @@ export default function Horoscope() {
         >
           {pdfLoading
             ? "Generating PDF..."
-            : "Download PDF"}
+            : "📄 Download Astrology PDF"}
         </button>
 
-        {/* SUCCESS */}
+        {/* PDF SUCCESS */}
 
         {pdfMessage && (
           <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-lg">
@@ -894,16 +1040,15 @@ export default function Horoscope() {
           </div>
         )}
 
-        {/* ERROR */}
+        {/* PDF ERROR */}
 
         {pdfError && (
           <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg">
-            {pdfError}
+            ❌ {pdfError}
           </div>
         )}
-
       </div>
-
     </div>
   );
 }
+
