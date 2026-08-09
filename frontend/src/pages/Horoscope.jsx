@@ -78,63 +78,70 @@ export default function Horoscope() {
   // GET DAILY HOROSCOPE
   // =========================================================
   async function getHoroscope() {
-    if (!sign) {
-      setResult({
-        error: "Please select your zodiac sign.",
-      });
-      return;
+  if (!sign) {
+    setResult({
+      error: "Please select your zodiac sign.",
+    });
+    return;
+  }
+
+  setLoading(true);
+  setResult(null);
+
+  try {
+    const url =
+      `${API_URL}/astrology/prediction?sign=${encodeURIComponent(sign)}`;
+
+    console.log("HOROSCOPE API:", url);
+
+    const res = await fetch(url);
+
+    const text = await res.text();
+
+    console.log("HOROSCOPE STATUS:", res.status);
+    console.log("HOROSCOPE RESPONSE:", text);
+
+    if (!text.trim()) {
+      throw new Error(
+        `Server returned empty response (${res.status})`
+      );
     }
 
-    setLoading(true);
-    setResult(null);
+    let data;
 
     try {
-      const url =
-        `${API_URL}/astrology/prediction?sign=` +
-        encodeURIComponent(sign);
+      data = JSON.parse(text);
+    } catch (error) {
+      console.error("Invalid JSON response:", text);
 
-      console.log("HOROSCOPE API:", url);
-
-      const res = await fetch(url);
-
-      const text = await res.text();
-
-      console.log("HOROSCOPE STATUS:", res.status);
-      console.log("HOROSCOPE RESPONSE:", text);
-
-      let data = {};
-
-      if (text) {
-        try {
-          data = JSON.parse(text);
-        } catch {
-          throw new Error(
-            `Server returned invalid JSON (${res.status})`
-          );
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(
-          data.detail ||
-            data.message ||
-            `Horoscope request failed (${res.status})`
-        );
-      }
-
-      setResult(data);
-    } catch (err) {
-      console.error("Horoscope Error:", err);
-
-      setResult({
-        error:
-          err.message ||
-          "Unable to connect AstroAI API",
-      });
-    } finally {
-      setLoading(false);
+      throw new Error(
+        `Server returned invalid JSON (${res.status})`
+      );
     }
+
+    if (!res.ok) {
+      throw new Error(
+        data.detail ||
+        data.message ||
+        `Horoscope request failed (${res.status})`
+      );
+    }
+
+    setResult(data);
+
+  } catch (err) {
+    console.error("Horoscope Error:", err);
+
+    setResult({
+      error:
+        err.message ||
+        "Unable to connect to AstroAI API",
+    });
+
+  } finally {
+    setLoading(false);
   }
+}
 
   // =========================================================
   // DOWNLOAD PDF
