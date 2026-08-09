@@ -302,7 +302,7 @@ def prediction(sign: str):
         }
     }
 
-    prediction_data = predictions.get(sign.lower())
+    prediction_data = predictions.get(sign.strip().lower())
 
     if prediction_data is None:
         raise HTTPException(
