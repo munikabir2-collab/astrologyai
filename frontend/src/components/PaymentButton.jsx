@@ -8,9 +8,12 @@ export default function PaymentButton({
 }) {
   const buyReport = async () => {
     try {
-      // ==========================================
-      // CREATE RAZORPAY ORDER
-      // ==========================================
+      if (!email) {
+        alert("❌ Please enter your email first.");
+        return;
+      }
+
+      // Create Razorpay order
       const res = await API.post("/payment/create-order", {
         report_type: reportType,
       });
@@ -20,10 +23,8 @@ export default function PaymentButton({
       console.log("Create Order Response:", data);
 
       // Free report
-      if (data.free) {
-        if (onSuccess) {
-          onSuccess();
-        }
+      if (data.free === true) {
+        onSuccess?.();
         return;
       }
 
@@ -35,19 +36,27 @@ export default function PaymentButton({
         );
       }
 
-      if (!data.key || !data.order) {
-        throw new Error("Invalid Razorpay order response");
+      if (!data.key || !data.order?.id) {
+        console.error("Invalid order response:", data);
+
+        throw new Error(
+          "Invalid Razorpay order response"
+        );
       }
 
-      // ==========================================
-      // RAZORPAY CHECKOUT
-      // ==========================================
+      if (!window.Razorpay) {
+        throw new Error(
+          "Razorpay SDK is not loaded."
+        );
+      }
+
       const options = {
         key: data.key,
 
         amount: data.order.amount,
 
-        currency: data.order.currency || "INR",
+        currency:
+          data.order.currency || "INR",
 
         name: "AstroAI",
 
@@ -56,7 +65,7 @@ export default function PaymentButton({
         order_id: data.order.id,
 
         prefill: {
-          email: email || "",
+          email: email,
         },
 
         handler: async function (response) {
@@ -69,7 +78,8 @@ export default function PaymentButton({
             const verifyRes = await API.post(
               "/payment/verify",
               {
-                email,
+                email: email,
+
                 report_type: reportType,
 
                 razorpay_order_id:
@@ -88,34 +98,44 @@ export default function PaymentButton({
               verifyRes.data
             );
 
-            if (!verifyRes.data.success) {
+            const verifyData =
+              verifyRes.data;
+
+            if (!verifyData.success) {
               throw new Error(
-                verifyRes.data.detail ||
+                verifyData.detail ||
+                  verifyData.message ||
                   "Payment verification failed"
               );
             }
 
-            alert("✅ Payment Successful");
+            alert(
+              "✅ Payment Successful"
+            );
 
-            if (onSuccess) {
-              onSuccess();
-            }
+            onSuccess?.();
+
           } catch (error) {
             console.error(
               "Payment Verification Error:",
-              error.response?.data || error
+              error
             );
 
-            alert(
+            const message =
               error.response?.data?.detail ||
-                "❌ Payment Verification Failed"
-            );
+              error.response?.data?.message ||
+              error.message ||
+              "Payment verification failed";
+
+            alert(`❌ ${message}`);
           }
         },
 
         modal: {
           ondismiss: function () {
-            console.log("Razorpay checkout closed");
+            console.log(
+              "Razorpay checkout closed"
+            );
           },
         },
 
@@ -124,13 +144,8 @@ export default function PaymentButton({
         },
       };
 
-      if (!window.Razorpay) {
-        throw new Error(
-          "Razorpay SDK is not loaded"
-        );
-      }
-
-      const razorpay = new window.Razorpay(options);
+      const razorpay =
+        new window.Razorpay(options);
 
       razorpay.on(
         "payment.failed",
@@ -148,18 +163,20 @@ export default function PaymentButton({
       );
 
       razorpay.open();
+
     } catch (error) {
       console.error(
         "Payment Order Error:",
-        error.response?.data || error
+        error
       );
 
-      alert(
+      const message =
         error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message ||
-          "❌ Payment Order Failed"
-      );
+        error.response?.data?.message ||
+        error.message ||
+        "Payment Order Failed";
+
+      alert(`❌ ${message}`);
     }
   };
 
@@ -173,4 +190,3 @@ export default function PaymentButton({
     </button>
   );
 }
-
