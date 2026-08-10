@@ -506,6 +506,7 @@ def dasha(
         raise HTTPException(
             status_code=500,
             detail=str(e),
+        )
 @router.post("/download-pdf")
 def download_pdf(
     data: HoroscopeRequest,
