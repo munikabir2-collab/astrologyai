@@ -8,7 +8,7 @@ import PaymentButton from "../components/PaymentButton";
 
 const API_URL =
   import.meta.env.VITE_API_URL ||
-  "https://astrologyai-s2y5.onrender.com";
+  "https://astrologyai-1.onrender.com";
 
 // ============================================================
 // SAFE API RESPONSE READER
@@ -1051,4 +1051,5 @@ export default function Horoscope() {
     </div>
   );
 }
+
 

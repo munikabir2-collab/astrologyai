@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PaymentButton from "../components/PaymentButton";
 import API from "../api/auth";
-const API_URL = "https://astrologyai-s2y5.onrender.com";
+const API_URL = "https://astrologyai-1.onrender.com";
 
 export default function PalmReading() {
 

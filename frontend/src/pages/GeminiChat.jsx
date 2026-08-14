@@ -11,7 +11,7 @@ export default function GeminiChat() {
     setLoading(true);
 
     try {
-      const response = await fetch("https://astrologyai-s2y5.onrender.com/gemini/", {
+      const response = await fetch("https://astrologyai-1.onrender.com/gemini/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
