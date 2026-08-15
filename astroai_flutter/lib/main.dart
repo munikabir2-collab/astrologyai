@@ -114,7 +114,7 @@ class _AstroAIWebViewState extends State<AstroAIWebView> {
       )
       ..loadRequest(
         Uri.parse(
-          'https://astrologyai-1.onrender.com',
+          'https://astrologyai-s2y5.onrender.com',
         ),
       );
   }
