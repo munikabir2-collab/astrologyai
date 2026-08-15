@@ -5,7 +5,6 @@ from sqlalchemy import text
 
 from app.database import Base, engine
 
-# Import ALL models before create_all
 from app.models.user import User
 from app.models.profile import Profile
 from app.models.payment import Payment
@@ -19,17 +18,10 @@ from app.routers.payment import router as payment_router
 
 
 # ==========================================================
-# Create database tables
+# Database Migration
 # ==========================================================
 
-Base.metadata.create_all(bind=engine)
-
-
-# ==========================================================
-# Fix existing database schema
-# ==========================================================
-
-def fix_database_schema():
+def migrate_database():
     with engine.begin() as conn:
 
         conn.execute(text("""
@@ -45,6 +37,13 @@ def fix_database_schema():
         """))
 
 
+# Run database migration
+migrate_database()
+
+# Create tables that don't exist
+Base.metadata.create_all(bind=engine)
+
+
 # ==========================================================
 # FastAPI App
 # ==========================================================
@@ -53,15 +52,6 @@ app = FastAPI(
     title="AstroAI API",
     version="1.0.0",
 )
-
-
-# ==========================================================
-# Startup
-# ==========================================================
-
-@app.on_event("startup")
-def startup():
-    fix_database_schema()
 
 
 # ==========================================================
