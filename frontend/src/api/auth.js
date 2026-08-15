@@ -3,7 +3,7 @@ import axios from "axios";
 const API = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL ||
-    "https://astrologyai-1.onrender.com",
+    "https://astrologyai-s2y5.onrender.com",
 
   headers: {
     "Content-Type": "application/json",
@@ -11,3 +11,4 @@ const API = axios.create({
 });
 
 export default API;
+

@@ -9,7 +9,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 function Gemini() {
 
 
-const API = "https://astrologyai-1.onrender.com";
+const API = "https://astrologyai-s2y5.onrender.com";
 
 
 const [prompt,setPrompt] = useState("");
@@ -519,3 +519,4 @@ whiteSpace:"pre-wrap"
 
 
 export default Gemini;
+
