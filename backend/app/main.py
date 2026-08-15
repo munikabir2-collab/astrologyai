@@ -1,7 +1,7 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.database import Base, engine
 
@@ -26,6 +26,26 @@ Base.metadata.create_all(bind=engine)
 
 
 # ==========================================================
+# Fix existing database schema
+# ==========================================================
+
+def fix_database_schema():
+    with engine.begin() as conn:
+
+        conn.execute(text("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS is_active
+            BOOLEAN NOT NULL DEFAULT TRUE
+        """))
+
+        conn.execute(text("""
+            ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS is_verified
+            BOOLEAN NOT NULL DEFAULT FALSE
+        """))
+
+
+# ==========================================================
 # FastAPI App
 # ==========================================================
 
@@ -33,6 +53,15 @@ app = FastAPI(
     title="AstroAI API",
     version="1.0.0",
 )
+
+
+# ==========================================================
+# Startup
+# ==========================================================
+
+@app.on_event("startup")
+def startup():
+    fix_database_schema()
 
 
 # ==========================================================
@@ -52,7 +81,10 @@ app.mount(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://astrologyai-1.onrender.com"],
+    allow_origins=[
+        "https://astrologyai-wdto.onrender.com",
+        "https://astrologyai-1.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,4 +112,3 @@ def home():
     return {
         "message": "AstroAI API Running 🚀"
     }
-
