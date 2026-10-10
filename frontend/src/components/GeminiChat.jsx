@@ -12,7 +12,7 @@ const talkGemini = async()=>{
     try{
 
     const res = await fetch(
-        "http://localhost:8000/gemini/chat",
+       "https://astrologyai-backend-2.onrender.com/gemini/chat",
         {
             method:"POST",
             headers:{
@@ -80,3 +80,4 @@ Send
 )
 
 }
+

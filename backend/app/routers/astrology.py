@@ -36,20 +36,78 @@ def horoscope(
     data: HoroscopeRequest,
     db: Session = Depends(get_db),
 ):
+    # ==========================================================
+    # 1. VALIDATE INPUT
+    # ==========================================================
 
-    # Payment Check
-    if not has_access(
+    if not data.name or not data.name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Name is required.",
+        )
+
+    if not data.email or not data.email.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Email is required.",
+        )
+
+    if not data.birth_date:
+        raise HTTPException(
+            status_code=400,
+            detail="Birth date is required.",
+        )
+
+    if not data.birth_time:
+        raise HTTPException(
+            status_code=400,
+            detail="Birth time is required.",
+        )
+
+    if not data.birth_place or not data.birth_place.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Birth place is required.",
+        )
+
+    # ==========================================================
+    # 2. PAYMENT CHECK
+    # ==========================================================
+
+    email = data.email.strip().lower()
+
+    has_horoscope_access = has_access(
         db=db,
-        email=data.email,
+        email=email,
         report_type="horoscope",
-    ):
+    )
+
+    print("====================================")
+    print("HOROSCOPE ACCESS CHECK")
+    print("EMAIL:", email)
+    print("REPORT TYPE:", "horoscope")
+    print("HAS ACCESS:", has_horoscope_access)
+    print("====================================")
+
+    if not has_horoscope_access:
         raise HTTPException(
             status_code=403,
             detail="Please purchase Horoscope Report.",
         )
 
+    # ==========================================================
+    # 3. GENERATE REPORT
+    # ==========================================================
+
     try:
-        location = get_coordinates(data.birth_place)
+        location = get_coordinates(
+            data.birth_place.strip()
+        )
+
+        if not location:
+            raise ValueError(
+                "Unable to find birth place coordinates."
+            )
 
         latitude = location["latitude"]
         longitude = location["longitude"]
@@ -84,22 +142,34 @@ def horoscope(
         return {
             "success": True,
             "name": data.name,
+            "email": email,
+
             "birth_details": {
                 "date": data.birth_date,
                 "time": data.birth_time,
                 "place": data.birth_place,
             },
+
             "location": {
                 "latitude": latitude,
                 "longitude": longitude,
             },
+
             "chart": chart,
             "panchang": panchang,
             "dasha": dasha,
             "gemini_report": report,
         }
 
+    except HTTPException:
+        raise
+
     except Exception as e:
+        print(
+            "HOROSCOPE REPORT ERROR:",
+            repr(e),
+        )
+
         raise HTTPException(
             status_code=500,
             detail=str(e),
@@ -302,7 +372,7 @@ def prediction(sign: str):
         }
     }
 
-    prediction_data = predictions.get(sign.lower())
+    prediction_data = predictions.get(sign.strip().lower())
 
     if prediction_data is None:
         raise HTTPException(
@@ -442,27 +512,58 @@ def download_pdf(
     data: HoroscopeRequest,
     db: Session = Depends(get_db),
 ):
-
     try:
 
-        # Payment Check
-        if not has_access(
+        # ======================================================
+        # 1. NORMALIZE EMAIL
+        # ======================================================
+
+        email = data.email.strip().lower()
+
+        # ======================================================
+        # 2. PAYMENT CHECK
+        # ======================================================
+
+        has_horoscope_access = has_access(
             db=db,
-            email=data.email,
-            report_type="ai_report",
-        ):
+            email=email,
+            report_type="horoscope",
+        )
+
+        print("====================================")
+        print("HOROSCOPE PDF PAYMENT CHECK")
+        print("EMAIL:", email)
+        print("REPORT TYPE:", "horoscope")
+        print("HAS ACCESS:", has_horoscope_access)
+        print("====================================")
+
+        if not has_horoscope_access:
             raise HTTPException(
                 status_code=403,
-                detail="Please purchase AI Astrology Report.",
+                detail="Please purchase Horoscope Report first.",
             )
 
-        # Location
-        location = get_coordinates(data.birth_place)
+        # ======================================================
+        # 3. LOCATION
+        # ======================================================
+
+        location = get_coordinates(
+            data.birth_place.strip()
+        )
+
+        if not location:
+            raise HTTPException(
+                status_code=400,
+                detail="Unable to find birth place coordinates.",
+            )
 
         latitude = location["latitude"]
         longitude = location["longitude"]
 
-        # Kundli Chart
+        # ======================================================
+        # 4. BIRTH CHART
+        # ======================================================
+
         chart = calculate_chart(
             birth_date=data.birth_date,
             birth_time=data.birth_time,
@@ -470,7 +571,10 @@ def download_pdf(
             longitude=longitude,
         )
 
-        # Panchang
+        # ======================================================
+        # 5. PANCHANG
+        # ======================================================
+
         panchang_data = get_panchang(
             data.birth_date,
             data.birth_time,
@@ -478,7 +582,10 @@ def download_pdf(
             longitude,
         )
 
-        # Dasha
+        # ======================================================
+        # 6. DASHA
+        # ======================================================
+
         dasha_result = get_vimshottari_dasha(
             data.birth_date,
             data.birth_time,
@@ -486,38 +593,69 @@ def download_pdf(
             longitude,
         )
 
-        # AI Report
+        # ======================================================
+        # 7. AI REPORT
+        # ======================================================
+
         ai_report = generate_astrology_report(
             chart,
             panchang_data,
             dasha_result,
         )
 
+        # ======================================================
+        # 8. PDF DATA
+        # ======================================================
+
         report = {
-            "title": "AstroAI Professional Kundli Report",
+            "title": "AstroAI Professional Horoscope Report",
+
             "name": data.name,
+
+            "email": email,
+
             "birth_details": {
                 "date": data.birth_date,
                 "time": data.birth_time,
                 "place": data.birth_place,
             },
+
             "location": {
                 "latitude": latitude,
                 "longitude": longitude,
             },
+
             "chart": chart,
+
             "panchang": panchang_data,
+
             "dasha": dasha_result,
+
             "ai_report": ai_report,
         }
 
+        # ======================================================
+        # 9. GENERATE PDF
+        # ======================================================
+
         pdf = generate_pdf(report)
+
+        if not pdf:
+            raise ValueError(
+                "PDF generation returned empty data."
+            )
+
+        # ======================================================
+        # 10. RETURN PDF
+        # ======================================================
 
         return Response(
             content=pdf,
             media_type="application/pdf",
             headers={
-                "Content-Disposition": 'attachment; filename="AstroAI_Kundli_Report.pdf"'
+                "Content-Disposition": (
+                    'attachment; filename="AstroAI_Horoscope_Report.pdf"'
+                )
             },
         )
 
@@ -525,7 +663,12 @@ def download_pdf(
         raise
 
     except Exception as e:
-        print("PDF ERROR:", e)
+
+        print(
+            "HOROSCOPE PDF ERROR:",
+            repr(e),
+        )
+
         raise HTTPException(
             status_code=500,
             detail=str(e),
@@ -569,27 +712,29 @@ def get_muhurat(
 
 
 
-
 @router.post("/palm-reading")
 async def palm_reading(
     email: str = Form(...),
     name: str = Form(...),
-    image: UploadFile = File(...)
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
+    email = email.strip().lower()
 
-    # Payment Check
-    paid = check_payment(email, "palm")
-
-    if not paid:
+    if not has_access(
+        db=db,
+        email=email,
+        report_type="palm",
+    ):
         raise HTTPException(
             status_code=403,
-            detail="Please purchase Palm Reading Report."
+            detail="Please purchase Palm Reading Report.",
         )
 
     result = await analyze_palm(
         email=email,
         name=name,
-        image=image
+        image=image,
     )
 
     return result

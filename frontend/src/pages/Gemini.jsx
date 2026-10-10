@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 import PromptBox from "../components/PromptBox";
 import FileUploader from "../components/FileUploader";
 import CameraCapture from "../components/CameraCapture";
@@ -9,7 +9,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 function Gemini() {
 
 
-const API = "http://127.0.0.1:8000";
+const API = "https://astrologyai-backend-2.onrender.com";
 
 
 const [prompt,setPrompt] = useState("");
@@ -519,3 +519,4 @@ whiteSpace:"pre-wrap"
 
 
 export default Gemini;
+

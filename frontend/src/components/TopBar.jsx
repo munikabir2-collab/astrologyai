@@ -71,3 +71,4 @@ function TopBar({ title = "🤖 Gemini AI Dashboard" }) {
 }
 
 export default TopBar;
+

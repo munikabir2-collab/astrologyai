@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import razorpay
 from dotenv import load_dotenv
@@ -11,12 +11,33 @@ from app.models.user import User
 
 load_dotenv()
 
+
+# ==========================================================
+# Razorpay Configuration
+# ==========================================================
+
+RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
+RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
+
+
+if not RAZORPAY_KEY_ID:
+    raise RuntimeError("RAZORPAY_KEY_ID is not configured")
+
+if not RAZORPAY_KEY_SECRET:
+    raise RuntimeError("RAZORPAY_KEY_SECRET is not configured")
+
+
 client = razorpay.Client(
     auth=(
-        os.getenv("RAZORPAY_KEY_ID"),
-        os.getenv("RAZORPAY_KEY_SECRET"),
+        RAZORPAY_KEY_ID,
+        RAZORPAY_KEY_SECRET,
     )
 )
+
+
+# ==========================================================
+# Report Prices
+# ==========================================================
 
 REPORT_PRICES = {
     "gemini": 49,
@@ -37,6 +58,10 @@ REPORT_PRICES = {
 }
 
 
+# ==========================================================
+# Create Razorpay Order
+# ==========================================================
+
 def create_payment_order(report_type: str):
 
     if report_type not in REPORT_PRICES:
@@ -47,30 +72,49 @@ def create_payment_order(report_type: str):
 
     amount = REPORT_PRICES[report_type]
 
+    # Free feature
     if amount == 0:
         return {
             "free": True,
             "amount": 0,
+            "report_type": report_type,
         }
 
-    order = client.order.create(
-        {
-            "amount": amount * 100,
-            "currency": "INR",
-            "payment_capture": 1,
-            "notes": {
-                "report": report_type,
-            },
-        }
-    )
+    try:
+
+        order = client.order.create(
+            {
+                "amount": amount * 100,
+                "currency": "INR",
+                "payment_capture": 1,
+                "notes": {
+                    "report": report_type,
+                },
+            }
+        )
+
+    except Exception as e:
+
+        print("RAZORPAY ORDER ERROR:", repr(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to create Razorpay order. Please check Razorpay credentials.",
+        )
 
     return {
         "free": False,
-        "key": os.getenv("RAZORPAY_KEY_ID"),
+        "key": RAZORPAY_KEY_ID,
         "amount": amount,
+        "currency": "INR",
+        "report_type": report_type,
         "order": order,
     }
 
+
+# ==========================================================
+# Verify Payment
+# ==========================================================
 
 def verify_payment(
     db: Session,
@@ -81,13 +125,30 @@ def verify_payment(
     razorpay_signature: str,
 ):
 
-    client.utility.verify_payment_signature(
-        {
-            "razorpay_order_id": razorpay_order_id,
-            "razorpay_payment_id": razorpay_payment_id,
-            "razorpay_signature": razorpay_signature,
-        }
-    )
+    if report_type not in REPORT_PRICES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid report type",
+        )
+
+    try:
+
+        client.utility.verify_payment_signature(
+            {
+                "razorpay_order_id": razorpay_order_id,
+                "razorpay_payment_id": razorpay_payment_id,
+                "razorpay_signature": razorpay_signature,
+            }
+        )
+
+    except Exception as e:
+
+        print("RAZORPAY VERIFY ERROR:", repr(e))
+
+        raise HTTPException(
+            status_code=400,
+            detail="Payment verification failed",
+        )
 
     user = (
         db.query(User)
@@ -111,7 +172,7 @@ def verify_payment(
         payment_id=razorpay_payment_id,
         signature=razorpay_signature,
         status="PAID",
-        payment_date=datetime.utcnow(),
+        payment_date=datetime.now(timezone.utc),
     )
 
     db.add(payment)
@@ -120,6 +181,10 @@ def verify_payment(
 
     return payment
 
+
+# ==========================================================
+# Check Paid Report
+# ==========================================================
 
 def has_paid_report(
     db: Session,
@@ -140,6 +205,10 @@ def has_paid_report(
     return payment is not None
 
 
+# ==========================================================
+# Get User Payments
+# ==========================================================
+
 def get_user_payments(
     db: Session,
     user_id: int,
@@ -154,18 +223,22 @@ def get_user_payments(
         .all()
     )
 
+
+# ==========================================================
+# Check Feature Access
+# ==========================================================
+
 def has_access(
     db: Session,
     email: str,
     report_type: str,
 ):
+
     user = (
         db.query(User)
         .filter(User.email == email)
         .first()
     )
-
-    
 
     if not user:
         return False
@@ -180,28 +253,42 @@ def has_access(
         .first()
     )
 
-    print("PAYMENT:", payment)
+    print(
+        "PAYMENT ACCESS:",
+        {
+            "user_id": user.id,
+            "report_type": report_type,
+            "payment": payment,
+        }
+    )
 
     return payment is not None
 
 
-from fastapi import HTTPException
-
+# ==========================================================
+# Verify Feature Payment
+# ==========================================================
 
 def verify_feature_payment(
     db: Session,
     email: str,
     feature: str,
 ):
-    """
-    Verify that the user has already paid
-    for the requested feature.
-    """
+
+    if feature not in REPORT_PRICES:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid feature",
+        )
 
     if not has_access(db, email, feature):
+
         raise HTTPException(
             status_code=403,
-            detail=f"Please pay ₹{REPORT_PRICES.get(feature, 99)} to unlock this feature."
+            detail=(
+                f"Please pay ₹{REPORT_PRICES[feature]} "
+                f"to unlock this feature."
+            ),
         )
 
     return True

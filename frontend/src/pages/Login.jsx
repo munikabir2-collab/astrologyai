@@ -10,6 +10,8 @@ export default function Login() {
     password: "",
   });
 
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     setForm({
       ...form,
@@ -19,22 +21,37 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
 
     try {
-      const res = await API.post("/auth/login", form);
+      console.log("API URL:", import.meta.env.VITE_API_URL);
 
-      alert("Login Successful");
+      const res = await API.post("/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
 
-      // Save Token
+      console.log("Login Response:", res.data);
+
       localStorage.setItem("token", res.data.access_token);
-
-      // Save Email
       localStorage.setItem("email", form.email);
 
+      alert("Login Successful");
       navigate("/dashboard");
 
     } catch (err) {
-      alert(err.response?.data?.detail || "Login Failed");
+      console.error("Login Error:", err);
+      console.error("Response:", err.response?.data);
+
+      alert(
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        JSON.stringify(err.response?.data) ||
+        err.message ||
+        "Login Failed"
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -67,16 +84,20 @@ export default function Login() {
             required
           />
 
-          <button className="btn btn-primary w-100">
-            Login
+          <button
+            className="btn btn-primary w-100"
+            disabled={loading}
+          >
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
         <p className="text-center mt-3">
-          Don't have an account?
-          <Link to="/signup"> Signup</Link>
+          Don't have an account?{" "}
+          <Link to="/signup">Signup</Link>
         </p>
       </div>
     </div>
   );
 }
+

@@ -190,13 +190,13 @@ uvicorn app.main:app --reload
 Backend will start:
 
 ```
-http://localhost:8000
+https://astrologyai-s2y5.onrender.com
 ```
 
 API Docs:
 
 ```
-http://localhost:8000/docs
+https://astrologyai-s2y5.onrender.com
 ```
 
 ---

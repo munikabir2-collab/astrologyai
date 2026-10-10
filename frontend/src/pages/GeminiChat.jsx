@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import API from "../api/auth";
 export default function GeminiChat() {
   const [prompt, setPrompt] = useState("");
   const [answer, setAnswer] = useState("");
@@ -11,7 +11,7 @@ export default function GeminiChat() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/gemini/", {
+      const response = await fetch("https://astrologyai-backend-2.onrender.com/gemini/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,3 +64,4 @@ export default function GeminiChat() {
     </div>
   );
 }
+
