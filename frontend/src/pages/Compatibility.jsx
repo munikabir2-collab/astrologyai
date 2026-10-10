@@ -2,7 +2,7 @@ import { useState } from "react";
 async function payCompatibility() {
   try {
     const res = await fetch(
-      "http://127.0.0.1:8000/payment/create-order",
+      "https://astrologyai-backend-2.onrender.com/payment/create-order",
       {
         method: "POST",
         headers: {
@@ -31,7 +31,7 @@ async function payCompatibility() {
 
       handler: async function (response) {
         const verify = await fetch(
-          "http://127.0.0.1:8000/payment/verify",
+          "https://astrologyai-backend-2.onrender.com/payment/verify",
           {
             method: "POST",
             headers: {
@@ -99,7 +99,7 @@ function Compatibility() {
 
     try {
       const res = await fetch(
-        "http://127.0.0.1:8000/astrology/compatibility",
+        "https://astrologyai-backend-2.onrender.com/astrology/compatibility",
         {
           method: "POST",
           headers: {

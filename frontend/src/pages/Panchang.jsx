@@ -18,7 +18,7 @@ export default function Panchang() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/astrology/panchang?date=${date}&time=${time}&place=${encodeURIComponent(place)}`
+        `https://astrologyai-backend-2.onrender.com/astrology/panchang?date=${date}&time=${time}&place=${encodeURIComponent(place)}`
       );
 
       const data = await res.json();
