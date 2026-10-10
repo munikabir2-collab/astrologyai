@@ -2,7 +2,7 @@
 import { useState } from "react";
 import API from "../api/auth";
 import PaymentButton from "../components/PaymentButton";
-const API_URL = "https://astrologyai-s2y5.onrender.com";
+const API_URL = "https://astrologyai-backend-2.onrender.com";
 
 function Muhurat() {
   const [form, setForm] = useState({
