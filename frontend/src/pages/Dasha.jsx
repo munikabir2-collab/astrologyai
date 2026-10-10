@@ -20,7 +20,7 @@ export default function Dasha() {
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/astrology/dasha?date=${date}&time=${time}&place=${encodeURIComponent(
+        `https://astrologyai-backend-2.onrender.com/astrology/dasha?date=${date}&time=${time}&place=${encodeURIComponent(
           place
         )}`
       );

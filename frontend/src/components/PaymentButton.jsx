@@ -10,7 +10,7 @@ export default function PaymentButton({
     try {
       // Create Razorpay Order
       const res = await axios.post(
-        "http://127.0.0.1:8000/payment/create-order",
+        "https://astrologyai-backend-2.onrender.com/payment/create-order",
         {
           report_type: reportType,
         }
@@ -34,7 +34,7 @@ export default function PaymentButton({
         handler: async function (response) {
           try {
             await axios.post(
-              "http://127.0.0.1:8000/payment/verify",
+              "https://astrologyai-backend-2.onrender.com/payment/verify",
               {
                 email,
                 report_type: reportType,

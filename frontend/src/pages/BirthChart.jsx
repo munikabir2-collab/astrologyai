@@ -27,7 +27,7 @@ export default function BirthChart() {
     try {
 
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/kundli",
+        "https://astrologyai-backend-2.onrender.com/astrology/kundli",
         {
           method: "POST",
           headers: {

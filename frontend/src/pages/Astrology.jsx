@@ -58,7 +58,7 @@ export default function Astrology() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/horoscope",
+        "https://astrologyai-backend-2.onrender.com/astrology/horoscope",
         {
           method: "POST",
           headers: {
@@ -90,7 +90,7 @@ export default function Astrology() {
       setPdfLoading(true);
 
       const response = await fetch(
-        "http://127.0.0.1:8000/astrology/download-pdf",
+        "https://astrologyai-backend-2.onrender.com/astrology/download-pdf",
         {
           method: "POST",
           headers: {

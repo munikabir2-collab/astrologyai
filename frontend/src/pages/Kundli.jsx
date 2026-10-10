@@ -45,7 +45,7 @@ export default function Kundli() {
     try {
 
       const res = await fetch(
-        "http://127.0.0.1:8000/astrology/kundli",
+        "https://astrologyai-backend-2.onrender.com/astrology/kundli",
         {
           method:"POST",
 
@@ -89,7 +89,7 @@ async function payAndDownloadPDF() {
   try {
 
     const orderRes = await fetch(
-      "http://127.0.0.1:8000/payment/create-order",
+      "https://astrologyai-backend-2.onrender.com/payment/create-order",
       {
         method: "POST",
         headers: {
@@ -125,7 +125,7 @@ async function payAndDownloadPDF() {
       handler: async function (response) {
 
         const verifyRes = await fetch(
-          "http://127.0.0.1:8000/payment/verify",
+          "https://astrologyai-backend-2.onrender.com/payment/verify",
           {
             method: "POST",
 
@@ -209,7 +209,7 @@ async function payAndDownloadPDF() {
 
       const response = await fetch(
 
-        "http://127.0.0.1:8000/astrology/download-pdf",
+        "https://astrologyai-backend-2.onrender.com/astrology/download-pdf",
 
         {
 

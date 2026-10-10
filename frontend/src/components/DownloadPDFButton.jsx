@@ -16,7 +16,7 @@ export default function DownloadPDFButton({ data }) {
             setError("");
 
             const response = await axios.post(
-                "http://127.0.0.1:8000/astrology/download-pdf",
+                "https://astrologyai-backend-2.onrender.com/astrology/download-pdf",
                 data,
                 {
                     responseType: "blob"
